@@ -1,0 +1,161 @@
+// app global css in SCSS form
+
+// Font Settings
+
+@font-face {
+  font-family: FreightSans-BlackRegular;
+  src: url(../assets/Fonts/FreightSansProBlack-Regular.woff);
+}
+
+@font-face {
+  font-family: FreightSans-BoldRegular;
+  src: url(../assets/Fonts/FreightSansProBold-Regular.woff);
+}
+
+@font-face {
+  font-family: FreightSans-BookRegular;
+  src: url(../assets/Fonts/FreightSansProBook-Regular.woff);
+}
+
+@font-face {
+  font-family: FreightSans-LightRegular;
+  src: url(../assets/Fonts/FreightSansProLight-Regular.woff);
+}
+
+@font-face {
+  font-family: FreightSans-MediumRegular;
+  src: url(../assets/Fonts/FreightSansProMedium-Regular.woff);
+}
+
+@font-face {
+  font-family: FreightSans-SemiboldRegular;
+  src: url(../assets/Fonts/FreightSansProSemibold-Regular.woff);
+}
+
+@font-face {
+  font-family: FreightSans-BlackItalic;
+  src: url(../assets/Fonts/FreightSansProBlack-Italic.woff);
+}
+
+@font-face {
+  font-family: FreightSans-BoldItalic;
+  src: url(../assets/Fonts/FreightSansProBold-Italic.woff);
+}
+
+@font-face {
+  font-family: FreightSans-BookItalic;
+  src: url(../assets/Fonts/FreightSansProBook-Italic.woff);
+}
+
+@font-face {
+  font-family: FreightSans-LightItalic;
+  src: url(../assets/Fonts/FreightSansProLight-Italic.woff);
+}
+
+@font-face {
+  font-family: FreightSans-MediumItalic;
+  src: url(../assets/Fonts/FreightSansProMedium-Italic.woff);
+}
+
+@font-face {
+  font-family: FreightSans-SemiboldItalic;
+  src: url(../assets/Fonts/FreightSansProSemibold-Italic.woff);
+}
+
+// Class for imported fonts
+
+.font-blackregular {
+  font-family: 'FreightSans-BlackRegular';
+}
+
+.font-boldregular {
+  font-family: 'FreightSans-BoldRegular';
+}
+
+.font-bookregular {
+  font-family: 'FreightSans-BookRegular';
+}
+
+.font-lightregular {
+  font-family: 'FreightSans-LightRegular';
+}
+
+.font-mediumregular {
+  font-family: 'FreightSans-MediumRegular';
+}
+
+.font-semiboldregular {
+  font-family: 'FreightSans-SemiboldRegular';
+}
+
+.font-blackitalic {
+  font-family: 'FreightSans-BlackItalic';
+}
+
+.font-bolditalic {
+  font-family: 'FreightSans-BoldItalic';
+}
+
+.font-bookitalic {
+  font-family: 'FreightSans-BookItalic';
+}
+
+.font-lightitalic {
+  font-family: 'FreightSans-LightItalic';
+}
+
+.font-mediumitalic {
+  font-family: 'FreightSans-MediumItalic';
+}
+
+.font-semibolditalic {
+  font-family: 'FreightSans-SemiboldItalic';
+}
+
+// Global
+
+body {
+  font-family: FreightSans-SemiBoldRegular;
+  line-height: 1rem;
+  color: #264e72;
+}
+
+span{
+  white-space:nowrap;
+}
+
+::selection {
+  background: #f89420;
+  color: #264e72;
+  text-shadow: none;
+}
+
+::-moz-selection {
+  background: #f89420;
+  color: #264e72;
+  text-shadow: none;
+}
+
+.bg-page {
+  background: $grey-4;
+}
+
+body .q-expansion-item__container .q-hoverable:hover .q-focus-helper {
+  background: inherit;
+  opacity: 0;
+}
+
+.q-field__prefix {
+  color: #264e72;
+}
+
+.q-field__label {
+  color: #264e72;
+}
+
+.q-loading__message,
+.q-loading__spinner {
+  margin: 10px;
+}
+
+
