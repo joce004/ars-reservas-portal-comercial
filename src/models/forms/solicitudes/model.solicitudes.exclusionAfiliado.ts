@@ -35,8 +35,8 @@ export const initExclusionAfiliadoForm: IFormGenerator<
     _File_Novedades: {
       label: 'Formulario de Novedades',
       GetType: 'file-picker',
-      section: 'Datos de la Solicitud',
+      section: 'Documentos'
     },
   };
-  return { form: exclusionAfiliadoForm, sections: [], files: true };
+  return { form: exclusionAfiliadoForm, sections: ['Documentos'], files: true };
 };

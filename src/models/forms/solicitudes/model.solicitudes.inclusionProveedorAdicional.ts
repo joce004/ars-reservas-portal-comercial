@@ -36,8 +36,8 @@ export const initInclusionProveedorAdicionalForm: IFormGenerator<
       _File_Comunicacion: {
         label: 'Formulario de Proveedor Adicional/Comunicación',
         GetType: 'file-picker',
-        section: 'Datos de la Solicitud',
+        section: 'Documentos'
       },
     };
-  return { form: inclusionProveedorAdicionalForm, sections: [], files: true };
+  return { form: inclusionProveedorAdicionalForm, sections: ['Documentos'], files: true };
 };

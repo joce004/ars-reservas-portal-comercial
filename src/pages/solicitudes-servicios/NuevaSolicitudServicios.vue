@@ -2,33 +2,40 @@
 import { useCloned } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useQuasar } from 'quasar';
-import { FileUploadModel, ServiceRequestClientIdentificationType,ServiceRequestCreationModel } from 'src/api';
+import {
+  FileUploadModel,
+  ServiceRequestClientIdentificationType,
+  ServiceRequestCreationModel,
+  ServiceRequestModel,
+  ServiceRequestTypeModelPaged,
+} from 'src/api';
+import { $serviceRequestApi, $serviceRequestTypeApi } from 'src/boot/api';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
 import SectionContainerComponent from 'src/components/ui/containers/SectionContainerComponent.vue';
 import FormGenerator from 'src/components/ui/forms/FormGeneratorComponent.vue';
 import SelectComponent from 'src/components/ui/inputs/SelectComponent.vue';
 import {
-ClientData,
-initRequestBusinessDataForm,
-initRequestClientData,
-initRequestClientDataForm,
+  ClientData,
+  initRequestBusinessDataForm,
+  initRequestClientData,
+  initRequestClientDataForm,
 } from 'src/models/forms/solicitudes/model.solicitudes.datosCliente';
 import {
-IFieldSpecification,
-IForm,
-ISelectOption
+  IFieldSpecification,
+  IForm,
+  ISelectOption,
 } from 'src/models/schemas/IFormSpecification';
-import {
-FetchServiceRequestType,
-PostServiceRequestType,
-} from 'src/repository/solicitudesServicio.repository';
+import { FetchUsersList } from 'src/repository/seguridad.usuarios.repository';
 import { siteMap } from 'src/router/siteMap';
 import { useAuthStore } from 'src/stores/auth.store';
+import { useCatalogStore } from 'src/stores/catalog.store';
+import { mapSelectList } from 'src/utils/array';
 import { blobToBase64 } from 'src/utils/file';
 import { formSetter } from 'src/utils/form-resolver';
 import { Loader } from 'src/utils/loading';
 import { padronBusiness, padronPerson } from 'src/utils/padron';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -52,12 +59,31 @@ const { cloned: form, sync: resetForm } = useCloned<
 const authStore = useAuthStore();
 const { profile: userInfo } = storeToRefs(authStore);
 
+const catalogStore = useCatalogStore();
+const { fetchBusinessesList } = catalogStore;
+const { businesses: businessList } = storeToRefs(catalogStore);
+
+const businessStore = fetchBusinessesList();
+businessStore.fetchBusinessExec();
+
 const loader = Loader;
 const router = useRouter();
 const $q = useQuasar();
 
+const initClientForm = () =>
+  initRequestClientDataForm({
+    businessList:
+      businessList.value?.filter(
+        (business) =>
+          business.id != userInfo?.value?.businesses?.[0]?.businessId
+      ) ?? [],
+    adminOrOficer:
+      userInfo.value?.type != 'Business' ||
+      userInfo?.value?.businesses?.[0].type?.type == 'Officer',
+  });
+
 const setForm = (selectedForm: number) => {
-  const clientForm = initRequestClientDataForm();
+  const clientForm = initClientForm();
   const formCreated = formSetter(selectedForm);
 
   form.value.model = Object.assign(
@@ -67,10 +93,7 @@ const setForm = (selectedForm: number) => {
   );
   form.value.formSchema = {
     form: Object.assign({}, clientForm.form, formCreated?.schema),
-    sections:
-      clientForm.sections && formCreated.sections
-        ? [...clientForm.sections, ...formCreated.sections]
-        : undefined,
+    sections: [...clientForm.sections, ...formCreated.sections]
   };
   form.value.files = formCreated?.files ?? false;
 };
@@ -84,11 +107,21 @@ const alert = (title: string, message: string) => {
 
 const fetchServiceRequestType = async () => {
   loader.showLoader('Cargando...');
-  const serviceRequestResult = await FetchServiceRequestType(
-    userInfo.value?.businesses?.[0]?.id ?? undefined
-  );
+  const serviceRequestResult =
+    await ResolveRequestOperation<ServiceRequestTypeModelPaged>(
+      () =>
+        $serviceRequestTypeApi.apiServiceRequestTypesGet({
+          businessId: userInfo.value?.businesses?.[0]?.id,
+          visibility: 'ServiceRequestForm',
+        }),
+      'No se pudo obtener el listado de servicios.'
+    );
   if (serviceRequestResult.IsSuccessful()) {
-    servicios.value = serviceRequestResult.Payload ?? [];
+    servicios.value = mapSelectList(
+      serviceRequestResult.Payload?.items ?? [],
+      'name',
+      'id'
+    );
   } else {
     alert(
       'Solicitudes de Servicio',
@@ -142,8 +175,8 @@ const submit = async () => {
         birthDate: form.value.model?.birthDate,
       },
       clientIdentification: {
-        type: form.value.model?.tipoidentificacion,
-        value: form.value.model?.identificacion,
+        type: form.value.model?.identificationType,
+        value: form.value.model?.identification,
       },
       clientContactInfo: [
         {
@@ -151,13 +184,22 @@ const submit = async () => {
           value: form.value.model?.eMail,
         },
       ],
+      businessOwnerId: form.value.model.businessOwnerId,
+      responsibleUserId: form.value.model.responsibleUserId,
       formData: JSON.stringify(Object.fromEntries(fields)),
       files: newFiles,
       typeId: servicio.value ?? -1,
     };
 
     loader.showLoader('Guardando...');
-    const serviceRequestResult = await PostServiceRequestType(data);
+    const serviceRequestResult =
+      await ResolveRequestOperation<ServiceRequestModel>(
+        () =>
+          $serviceRequestApi.apiServiceRequestsPost({
+            serviceRequestCreationModel: data,
+          }),
+        'No se pudo crear solicitud.'
+      );
     loader.hideLoader();
 
     if (serviceRequestResult?.IsSuccessful()) {
@@ -202,8 +244,32 @@ const findBusiness = async () => {
   }
 };
 
+const setResponsibleUserList = async (businessId: number | null) => {
+  if (businessId && form.value) {
+    loader.showLoader('Cargando...');
+    const usersResult = await FetchUsersList({ businessId: businessId });
+    loader.hideLoader();
+    if (form.value.formSchema) {
+      if (usersResult.IsSuccessful() && usersResult.Payload?.length) {
+        form.value.formSchema.form.responsibleUserId.options = mapSelectList(
+          usersResult.Payload,
+          'fullName',
+          'id'
+        );
+        form.value.formSchema.form.responsibleUserId.GetType = 'select';
+        return;
+      }
+      if (form.value) {
+        form.value.formSchema.form.responsibleUserId.options = [];
+        form.value.formSchema.form.responsibleUserId.GetType = 'hidden';
+      }
+    }
+  }
+};
+
 onMounted(async () => {
   await fetchServiceRequestType();
+  await fetchBusinessesList();
 });
 
 watch(
@@ -222,7 +288,7 @@ watch(
       if (n == 'Personal') {
         form.value.formSchema.form = Object.assign(
           {},
-          initRequestClientDataForm().form,
+          initClientForm().form,
           formCreated?.schema
         );
         (form.value.model as ClientData).identificationType = n;
@@ -241,12 +307,22 @@ watch(
       if (n == 'Passport') {
         form.value.formSchema.form = Object.assign(
           {},
-          initRequestClientDataForm().form,
+          initClientForm().form,
           formCreated?.schema
         );
-        form.value.formSchema.form.documentId.GetType = 'input';
+        form.value.formSchema.form.identification.GetType = 'input';
         (form.value.model as ClientData).identificationType = n;
       }
+    }
+  }
+);
+
+watch(
+  () => form.value.model?.businessOwnerId,
+  async (n) => {
+    await setResponsibleUserList(n ?? null);
+    if (!n && form.value) {
+      form.value.model.responsibleUserId = null;
     }
   }
 );

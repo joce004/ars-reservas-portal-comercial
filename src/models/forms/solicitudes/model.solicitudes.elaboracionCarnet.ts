@@ -37,7 +37,8 @@ export const initElaboracionCarnetForm: IFormGenerator<ElaboracionCarnet> = () =
     _File_Novedades: {
       label: 'Formulario de Novedades',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
   };
-  return { form: elaboracionCarnetForm, sections: ['Datos de la Solicitud'],  files: true };
+  return { form: elaboracionCarnetForm, sections: ['Datos de la Solicitud', 'Documentos'],  files: true };
 };

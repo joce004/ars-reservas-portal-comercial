@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { FolderResponseModel } from 'src/api';
+import { $resourcesLibraryApi } from 'src/boot/api';
 import FormBtnComponent from 'src/components/ui/buttom/FormBtnComponent.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
 import SectionContainerComponent from 'src/components/ui/containers/SectionContainerComponent.vue';
 import InputComponent from 'src/components/ui/inputs/InputComponent.vue';
-import { FetchRecursos } from 'src/repository/list.repository';
 import { Loader } from 'src/utils/loading';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { routeResolver } from 'src/utils/route-resolver';
 import { computed, onMounted, ref } from 'vue';
 
@@ -43,19 +44,29 @@ const resetFolder = () => {
 
 const search = async () => {
   loader.showLoader('Buscando...');
-  const resources = await FetchRecursos({
-    param: searchValue.value,
-    viewType: 'OnlyFiles',
-  });
-  directoryRoute.value = [resources];
+  const resources = await ResolveRequestOperation<FolderResponseModel>(
+    () =>
+      $resourcesLibraryApi.apiSharedLibraryPublicGet({
+        name: searchValue.value,
+        viewType: 'OnlyFiles',
+      }),
+    'No se pudo obtener los recursos.'
+  );
+  resources?.Payload && (directoryRoute.value = [resources.Payload]);
   showingByDirectory.value = false;
   Loader.hideLoader();
 };
 
 const fetch = async () => {
   loader.showLoader('Cargando...');
-  const resources = await FetchRecursos({ viewType: 'Default' });
-  resourcesInfo.value = resources;
+  const resources = await await ResolveRequestOperation<FolderResponseModel>(
+    () =>
+      $resourcesLibraryApi.apiSharedLibraryPublicGet({
+        viewType: 'Default',
+      }),
+    'No se pudo obtener los recursos.'
+  );
+  resources.Payload && (resourcesInfo.value = resources.Payload);
   showingByDirectory.value = true;
   Loader.hideLoader();
 };
@@ -115,7 +126,11 @@ onMounted(async () => {
       />
     </SectionContainerComponent>
     <SectionContainerComponent>
-      <q-expansion-item class="full-width" header-class="q-pa-none" default-opened>
+      <q-expansion-item
+        class="full-width"
+        header-class="q-pa-none"
+        default-opened
+      >
         <template #header>
           <span class="flex items-center text-h6 font-semiboldregular">
             <q-icon

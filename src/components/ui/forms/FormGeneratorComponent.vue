@@ -240,18 +240,7 @@ defineExpose({
                 </MultipleSelectComponent>
               </div>
             </template>
-          </template>
-        </template>
-      </div>
-    </template>
-    <template v-if="files">
-      <div class="text-h6 q-pa-sm q-mt-sm">
-        DOCUMENTOS A CARGAR
-        <q-separator />
-      </div>
-      <div class="row">
-        <template v-for="(field, key) in formSchema" :key="key">
-          <template v-if="field.GetType == 'file-picker'">
+            <template v-if="field.GetType == 'file-picker'">
             <div class="col-md-4 col-sm-6 col-xs-12 q-pa-sm">
               <FilePickerComponent
                 v-model="model[key]"
@@ -260,6 +249,7 @@ defineExpose({
                 :validate="validate"
               />
             </div>
+          </template>
           </template>
         </template>
       </div>

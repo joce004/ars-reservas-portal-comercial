@@ -36,6 +36,8 @@ watch(
     ref="imputRef"
     v-model="model"
     color="primary"
+    mask="(###) ### - ####"
+    unmasked-value
     square
     outlined
   >

@@ -19,27 +19,26 @@ const useAxios = () => {
   };
 };
 
-export default boot(({router}) => {
+export default boot(({ router }) => {
   $axios = ref(
     axios.create({
-      baseURL: process.env.PROD
-        ? process.env.APP_API_PATH
-        : 'http://20.115.107.236/argento-ov-api',
+      baseURL: process.env.APP_API_PATH,
       withCredentials: true,
       headers: { Accept: 'application/json' },
-      validateStatus: (status) => (status >= 200 && status < 400) || status == 403
+      validateStatus: (status) =>
+        (status >= 200 && status < 400) || status == 403,
     })
   );
 
   $axios.value.interceptors.response.use(async function (response) {
-    if ( response.status === 400) {
+    if (response.status === 400) {
       return Promise.reject(response);
     }
 
-    if ( response.status === 403) {
-      const logoutRoute = 'logout'
+    if (response.status === 403) {
+      const logoutRoute = 'logout';
       if (router.currentRoute.value.name !== logoutRoute) {
-        router.push({ name: logoutRoute })
+        router.push({ name: logoutRoute });
       }
       return Promise.reject(response);
     }

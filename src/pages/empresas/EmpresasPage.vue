@@ -7,8 +7,11 @@ import {
   BusinessEditionModel,
   BusinessIdentificationType,
   BusinessModel,
+  BusinessModelPaged,
   BusinessType,
+  Status,
 } from 'src/api';
+import { $businessApi } from 'src/boot/api';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import DialogFormComponent from 'src/components/ui/containers/DialogFormComponent.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
@@ -25,18 +28,12 @@ import {
 } from 'src/models/forms/empresas/model.empresas';
 import { IColumn } from 'src/models/schemas/IColumn';
 import { IForm } from 'src/models/schemas/IFormSpecification';
-import {
-  DeleteBusiness,
-  FetchBusinesses,
-  GetBusiness,
-  PostBusiness,
-  PutBusiness,
-} from 'src/repository/empresa.repository';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useCatalogStore } from 'src/stores/catalog.store';
 import { getSelectList, mapSelectList } from 'src/utils/array';
 import { Loader } from 'src/utils/loading';
 import { padronBusiness } from 'src/utils/padron';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { onMounted, ref, watch } from 'vue';
 
 const columns = ref<IColumn<BusinessModel>[]>();
@@ -121,7 +118,13 @@ const editBusiness = async (id: number) => {
   if (!usersStore.fetchUserIsReady.value) {
     await until(usersStore.fetchUserIsReady).toBe(true);
   }
-  const businessResult = await GetBusiness(id);
+  const businessResult = await ResolveRequestOperation<BusinessModel>(
+    () =>
+      $businessApi.apiBusinessesIdGet({
+        id: id,
+      }),
+    'No se pudo obtener los datos del intermediario.'
+  );
   loader.hideLoader();
   if (businessResult.IsSuccessful() && businessResult.Payload)
     dialogHandler.value = {
@@ -147,7 +150,20 @@ const fetchBusinesses = async (params?: {
   page?: number;
   query?: Record<string, string>;
 }) => {
-  const businessesResult = await FetchBusinesses(params, userInfo.value?.type);
+  const businessesResult = await ResolveRequestOperation<BusinessModelPaged>(
+    () =>
+      $businessApi.apiBusinessesGet({
+        page: params?.page ?? 1,
+        nameContains: params?.query?.name,
+        status: params?.query?.status as Status,
+        type:
+          userInfo.value?.type == 'Business'
+            ? 'Intermediary'
+            : (params?.query?.type as BusinessType),
+        rawIncludes: ['owner'],
+      }),
+    'No se pudo obtener el listado de intermediarios.'
+  );
 
   if (businessesResult.IsSuccessful()) {
     data.value = businessesResult.Payload?.items ?? [];
@@ -207,7 +223,14 @@ const submit = async () => {
         },
       };
 
-      const businessResult = await PostBusiness(modelToPost);
+      const businessResult =
+        await ResolveRequestOperation<BusinessCreationModel>(
+          () =>
+            $businessApi.apiBusinessesPost({
+              businessCreationModel: modelToPost,
+            }),
+          'No se pudo crear el intermediario.'
+        );
 
       if (businessResult?.IsSuccessful()) {
         resetDialogData();
@@ -250,7 +273,13 @@ const submit = async () => {
         },
       };
 
-      const businessResult = await PutBusiness(modelToPut);
+      const businessResult = await ResolveRequestOperation<BusinessModel>(
+        () =>
+          $businessApi.apiBusinessesPut({
+            businessEditionModel: modelToPut,
+          }),
+        'No se pudo modificar el intermediario.'
+      );
 
       if (businessResult?.IsSuccessful()) {
         resetDialogData();
@@ -271,7 +300,13 @@ const submit = async () => {
 const deleteBusiness = async (id: number) => {
   loader.showLoader('Eliminando...');
 
-  const businessResult = await DeleteBusiness(id);
+  const businessResult = await ResolveRequestOperation<void>(
+    () =>
+      $businessApi.apiBusinessesIdDelete({
+        id: id,
+      }),
+    'No se pudo eliminar el intermediario.'
+  );
 
   if (businessResult?.IsSuccessful()) {
     await fetchBusinesses();

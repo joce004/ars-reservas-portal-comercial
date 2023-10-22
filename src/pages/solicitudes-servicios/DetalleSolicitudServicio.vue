@@ -3,12 +3,14 @@ import { useCloned, useDateFormat } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useQuasar } from 'quasar';
 import {
+  ErrorResponse,
   ServiceRequestClientIdentificationType,
   ServiceRequestEditionModel,
   ServiceRequestEmailInteractionModel,
   ServiceRequestModel,
   ServiceRequestStatusChangeModel,
 } from 'src/api';
+import { $serviceRequestApi } from 'src/boot/api';
 import FormBtnComponent from 'src/components/ui/buttom/FormBtnComponent.vue';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import DialogFormComponent from 'src/components/ui/containers/DialogFormComponent.vue';
@@ -34,17 +36,13 @@ import {
   IForm,
   ISelectOption,
 } from 'src/models/schemas/IFormSpecification';
-import {
-  GetServiceRequest,
-  PutServiceRequest,
-  PutServiceRequestsStatus,
-} from 'src/repository/solicitudesServicio.repository';
 import { siteMap } from 'src/router/siteMap';
 import { useAuthStore } from 'src/stores/auth.store';
 import { getSelectList } from 'src/utils/array';
 import { formSetter } from 'src/utils/form-resolver';
 import { Loader } from 'src/utils/loading';
 import { padronBusiness, padronPerson } from 'src/utils/padron';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
@@ -77,10 +75,8 @@ const { cloned: dialogHandler, sync: resetDialogData } = useCloned<
   action: null,
 });
 
-const requestDataSquema = formSetter(
-  model.value?.typeId as number,
-  model.value?.formData as string
-);
+const requestDataSquema = () =>
+  formSetter(model.value?.typeId as number, model.value?.formData as string);
 
 const authStore = useAuthStore();
 const { profile: userInfo } = storeToRefs(authStore);
@@ -100,16 +96,13 @@ const edit = () => {
     const clientForm = initRequestClientDataForm();
     dialogHandler.value.model = Object.assign(
       initRequestClientData(model.value),
-      requestDataSquema?.model
+      requestDataSquema()?.model
     );
     dialogHandler.value.formSchema = {
-      form: Object.assign({}, clientForm.form, requestDataSquema?.schema),
-      sections:
-        clientForm.sections && requestDataSquema.sections
-          ? [...clientForm.sections, ...requestDataSquema.sections]
-          : undefined,
+      form: Object.assign({}, clientForm.form, requestDataSquema()?.schema),
+      sections: [...clientForm.sections, ...requestDataSquema().sections],
     };
-    dialogHandler.value.files = requestDataSquema?.files ?? false;
+    dialogHandler.value.files = requestDataSquema()?.files ?? false;
   }
   dialogHandler.value.action = 'U';
   dialogHandler.value.show = true;
@@ -198,8 +191,8 @@ const submit = async () => {
         birthDate: dialogHandler.value.model.birthDate,
       },
       clientIdentification: {
-        type: dialogHandler.value.model.tipoidentificacion,
-        value: dialogHandler.value.model.identificacion,
+        type: dialogHandler.value.model.identificationType,
+        value: dialogHandler.value.model.identification,
       },
       clientContactInfo: [
         {
@@ -210,7 +203,14 @@ const submit = async () => {
       formData: JSON.stringify(Object.fromEntries(fields)),
     };
     loader.showLoader('Guardando...');
-    const serviceRequestResult = await PutServiceRequest(data);
+    const serviceRequestResult =
+      await ResolveRequestOperation<ServiceRequestModel>(
+        () =>
+          $serviceRequestApi.apiServiceRequestsPut({
+            serviceRequestEditionModel: data,
+          }),
+        'No se pudo actualizar la solicitud.'
+      );
     loader.hideLoader();
 
     if (serviceRequestResult?.IsSuccessful()) {
@@ -234,7 +234,14 @@ const submit = async () => {
 
     if (model.value?.status != data.status) {
       loader.showLoader('Guardando...');
-      const serviceRequestResult = await PutServiceRequestsStatus(data);
+      const serviceRequestResult = await ResolveRequestOperation<ErrorResponse>(
+        () =>
+          $serviceRequestApi.apiServiceRequestsStatusPut({
+            serviceRequestStatusChangeModel: data,
+          }),
+        'No se pudo actualizar el estado.'
+      );
+
       loader.hideLoader();
       if (serviceRequestResult?.IsSuccessful()) {
         dialogHandler.value.show = false;
@@ -259,7 +266,20 @@ const submit = async () => {
 
 const getServiceRequest = async (id: number) => {
   loader.showLoader('Cargando...');
-  const serviceRequestResult = await GetServiceRequest(id);
+  const serviceRequestResult =
+    await ResolveRequestOperation<ServiceRequestModel>(
+      () =>
+        $serviceRequestApi.apiServiceRequestsIdGet({
+          id: id,
+          rawIncludes: [
+            'type',
+            'responsibleuser',
+            'businessOwner.responsibleuser',
+            'interactions',
+          ],
+        }),
+      'No se pudo obtener los datos de la solicitud.'
+    );
   loader.hideLoader();
   if (serviceRequestResult.IsSuccessful() && serviceRequestResult.Payload) {
     model.value = serviceRequestResult.Payload;
@@ -297,7 +317,7 @@ watch(
         dialogHandler.value.formSchema.form = Object.assign(
           {},
           initRequestClientDataForm().form,
-          requestDataSquema?.schema
+          requestDataSquema()?.schema
         );
         (dialogHandler.value.model as ClientData).identificationType = n;
       }
@@ -305,7 +325,7 @@ watch(
         dialogHandler.value.formSchema.form = Object.assign(
           {},
           initRequestBusinessDataForm().form,
-          requestDataSquema?.schema
+          requestDataSquema()?.schema
         );
         (dialogHandler.value.model as ClientData).identificationType = n;
         (dialogHandler.value.model as ClientData).firstName = null;
@@ -318,7 +338,7 @@ watch(
         dialogHandler.value.formSchema.form = Object.assign(
           {},
           initRequestClientDataForm().form,
-          requestDataSquema?.schema
+          requestDataSquema()?.schema
         );
         dialogHandler.value.formSchema.form.documentId.GetType = 'input';
         (dialogHandler.value.model as ClientData).identificationType = n;
@@ -396,32 +416,37 @@ siteMap;
         <div class="row">
           <ItemResume
             :title="`${$q.screen.gt.md ? 'Número de' : '#'}  Seguimiento`"
-            :value="model.id"
+            :value="model?.id"
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-3 col-md-3 col-lg-2"
-          />
-          <ItemResume
-            v-if="$q.screen.lt.md"
-            title="Estado"
-            :value="statusOptions.find((x) => x.value == status)?.text"
-            html-class="text-subtitle1"
-            type="v"
-            class="col-xs-12 col-sm-3 col-md-3 col-lg-2"
+            class="col-xs-12 col-md-auto"
           />
           <ItemResume
             title="Fecha de Creación"
-            :value="useDateFormat(model.createdOnUtc ?? '', 'YYYY-MM-DD').value"
+            :value="
+              useDateFormat(model?.createdOnUtc ?? '', 'YYYY-MM-DD').value
+            "
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-3 col-md-3 col-lg-2"
+            class="col-xs-12 col-md-auto"
           />
           <ItemResume
             title="Intermediario"
             :value="model?.businessOwner?.name?.toLocaleUpperCase()"
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-2 col-md-3 col-lg-2"
+            class="col-xs-12 col-md-auto"
+          />
+          <ItemResume
+            v-if="
+              model?.businessOwner?.responsibleUser?.fullName?.toLocaleUpperCase() !=
+              model?.responsibleUser?.fullName?.toLocaleUpperCase()
+            "
+            title="Representante"
+            :value="model?.responsibleUser?.fullName?.toLocaleUpperCase()"
+            html-class="text-subtitle1"
+            type="v"
+            class="col-xs-12 col-md-auto"
           />
           <ItemResume
             v-if="model?.businessOwner?.responsibleUser?.fullName"
@@ -431,14 +456,16 @@ siteMap;
             "
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-2 col-md-3 col-lg-2"
+            class="col-xs-12 col-md-auto"
           />
           <ItemResume
-            title="Representante"
-            :value="model?.responsibleUser?.fullName?.toLocaleUpperCase()"
+          v-if="userInfo?.roles?.includes('ServiceRequests.Edit') &&
+                model.status != 'Completed'"
+            title="Estado"
+            :value="statusOptions.find((x) => x.value == status)?.text"
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-4 col-md-2"
+            class="col-xs-12 col-md-auto"
           />
         </div>
       </SectionContainerComponent>
@@ -450,35 +477,36 @@ siteMap;
         <q-separator class="q-mx-sm q-my-md" />
         <div class="row">
           <ItemResume
-            title="Nombre"
-            :value="model.client?.fullName"
-            html-class="text-subtitle1"
-            type="v"
-            class="col-xs-12 col-md-6 col-lg-4"
-          />
-          <ItemResume
             :title="`${$q.screen.gt.sm ? 'Número de' : '#'}  Identificación`"
-            :value="model.clientIdentification?.value"
+            :value="model?.clientIdentification?.value"
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-4 col-md-6 col-lg-3"
+            class="col-xs-12 col-md-auto"
           />
           <ItemResume
+            title="Nombre"
+            :value="model?.client?.fullName"
+            html-class="text-subtitle1"
+            type="v"
+            class="col-xs-12 col-md-auto"
+          />
+          <ItemResume
+            v-if="model?.client?.birthDate"
             title="Fecha de Nacimiento"
             :value="
-              useDateFormat(model.client?.birthDate ?? '', 'YYYY-MM-DD').value
+              useDateFormat(model?.client?.birthDate ?? '', 'YYYY-MM-DD').value
             "
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-4 col-md-6 col-lg-2"
+            class="col-xs-12 col-md-auto"
           />
           <ItemResume
-            v-if="model.clientContactInfo"
+            v-if="model?.clientContactInfo"
             title="Correo Electrónico"
-            :value="model.clientContactInfo[0].value"
+            :value="model?.clientContactInfo[0].value"
             html-class="text-subtitle1"
             type="v"
-            class="col-xs-12 col-sm-4 col-md-6 col-lg-3"
+            class="col-xs-12 col-md-auto"
           />
         </div>
       </SectionContainerComponent>
@@ -496,7 +524,11 @@ siteMap;
               <ItemResume
                 v-if="!(key as string).includes('_File_')"
                 :title="field.label"
-                :value="formData?.[key]"
+                :value="
+                  formData?.[key] && `${formData?.[key]}`.length
+                    ? `${formData?.[key]}`
+                    : 'No definido'
+                "
                 html-class="text-subtitle1"
                 type="v"
                 class="col-xs-12 col-sm-4 col-lg-2"

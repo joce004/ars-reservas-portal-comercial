@@ -41,11 +41,12 @@ export const initCancelacionContratoForm: IFormGenerator<CancelacionContrato> = 
     _File_Comunicacion: {
       label: 'Comunicación del Cliente o Intermediario',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
   };
   return {
     form: cancelacionContratoForm,
-    sections: ['Datos de la Solicitud'],
+    sections: ['Datos de la Solicitud', 'Documentos'],
     files: true,
   };
 };

@@ -7,9 +7,12 @@ import { useCloned } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useQuasar } from 'quasar';
 import {
+  BusinessServiceRequestTypeEditionModel,
   BusinessServiceRequestTypeModel,
+  BusinessServiceRequestTypeModelPaged,
   ServiceRequestTypeCreationModel,
   ServiceRequestTypeModel,
+  ServiceRequestTypeModelPaged,
 } from 'src/api';
 import DialogFormComponent from 'src/components/ui/containers/DialogFormComponent.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
@@ -21,15 +24,14 @@ import {
   initEditBusinessServiceModel,
 } from 'src/models/forms/catalogo-servicios/model.catalogoServicios';
 import { IForm } from 'src/models/schemas/IFormSpecification';
-import {
-  FetchBusinessServiceRequestType,
-  FetchServiceRequestType,
-  GetBusinessesServiceRequestType,
-  PutBusinessesServiceRequestType,
-} from 'src/repository/catalogoServicios.repository';
 import { useAuthStore } from 'src/stores/auth.store';
 import { getSelectList } from 'src/utils/array';
 import { Loader } from 'src/utils/loading';
+import { ResolveRequestOperation } from 'src/utils/request';
+import {
+  $businessServiceRequestTypeApi,
+  $serviceRequestTypeApi,
+} from 'src/boot/api';
 
 const columns = ref<IColumn<ServiceRequestTypeModel>[]>();
 const data = ref<ServiceRequestTypeModel[]>([]);
@@ -38,7 +40,7 @@ const pages = ref<{ curent: number; total: number }>({ curent: 0, total: 0 });
 const { cloned: dialogHandler, sync: resetDialogData } = useCloned<
   Nullable<{
     show: boolean;
-    model: object;
+    model: BusinessServiceRequestTypeEditionModel;
     schema:
       | IForm<ServiceRequestTypeCreationModel>
       | IForm<BusinessServiceRequestTypeModel>;
@@ -114,7 +116,14 @@ const alert = (title: string, message: string) => {
 
 const editBusinessServiceRequestType = async (id: number) => {
   loader.showLoader('Guardando...');
-  const serviceRequestTypeResult = await GetBusinessesServiceRequestType(id);
+  const serviceRequestTypeResult =
+    await ResolveRequestOperation<ServiceRequestTypeModel>(
+      () =>
+        $businessServiceRequestTypeApi.apiBusinessesServiceRequestTypesIdGet({
+          id: id,
+        }),
+      'No se pudo obtener los datos del servicio.'
+    );
   loader.hideLoader();
   if (
     serviceRequestTypeResult.IsSuccessful() &&
@@ -133,7 +142,15 @@ const fetchServiceRequestType = async (params?: {
   page?: number;
   query?: object;
 }) => {
-  const businessesResult = await FetchServiceRequestType(params);
+  const businessesResult =
+    await ResolveRequestOperation<ServiceRequestTypeModelPaged>(
+      () =>
+        $serviceRequestTypeApi.apiServiceRequestTypesGet({
+          page: params?.page ?? 1,
+          rawIncludes: ['requestType'],
+        }),
+      'No se pudo obtener el listado de servicios.'
+    );
 
   if (businessesResult.IsSuccessful()) {
     data.value =
@@ -156,7 +173,15 @@ const fetchBusinessServiceRequestType = async (params?: {
   page?: number;
   query?: object;
 }) => {
-  const businessesResult = await FetchBusinessServiceRequestType(params);
+  const businessesResult =
+    await ResolveRequestOperation<BusinessServiceRequestTypeModelPaged>(
+      () =>
+        $businessServiceRequestTypeApi.apiBusinessesServiceRequestTypesGet({
+          page: params?.page ?? 1,
+          rawIncludes: ['requestType'],
+        }),
+      'No se pudo obtener el servicio.'
+    );
 
   if (businessesResult.IsSuccessful()) {
     data.value =
@@ -220,7 +245,14 @@ const submit = async () => {
 
     if (dialogHandler.value.formAction == 'UR') {
       const businessServiceRequestResult =
-        await PutBusinessesServiceRequestType(dialogHandler.value.model);
+        await ResolveRequestOperation<BusinessServiceRequestTypeModel>(
+          () =>
+            $businessServiceRequestTypeApi.apiBusinessesServiceRequestTypesPut({
+              businessServiceRequestTypeEditionModel:
+                dialogHandler.value.model ?? {},
+            }),
+          'No se pudo modificar el servicio.'
+        );
 
       if (businessServiceRequestResult?.IsSuccessful()) {
         await fetchServiceRequestType();

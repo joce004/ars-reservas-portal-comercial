@@ -10,9 +10,11 @@ import {
   FileResultModel,
   QuoteProductsDataModel,
   QuoteProductsRequestModel,
+  QuoteProductsResponseModel,
   ServiceRequestModel,
   ValueItemResponseModel,
 } from 'src/api';
+import { $productApi, $serviceRequestApi } from 'src/boot/api';
 import InsuredAmountComponent from 'src/components/encapsulations/cotizaciones/InsuredAmountComponent.vue';
 import ProductFeeComponent from 'src/components/encapsulations/cotizaciones/ProductFeeComponent.vue';
 import ProductsOpcionalsComponent from 'src/components/encapsulations/cotizaciones/ProductsOpcionalsComponent.vue';
@@ -55,13 +57,7 @@ import {
   getTotalOptionals,
   initProductQuote,
 } from 'src/models/schemas/IProductQuote';
-import {
-  FetchProductos,
-  PostProductsQuote,
-  PrintQuote,
-} from 'src/repository/cotizadorPlanes.repository';
 import { FetchUsersList } from 'src/repository/seguridad.usuarios.repository';
-import { GetServiceRequest } from 'src/repository/solicitudesServicio.repository';
 import { siteMap } from 'src/router/siteMap';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useCatalogStore } from 'src/stores/catalog.store';
@@ -69,6 +65,7 @@ import { mapSelectList } from 'src/utils/array';
 import { base64toFile } from 'src/utils/file';
 import { Loader } from 'src/utils/loading';
 import { padronBusiness, padronPerson } from 'src/utils/padron';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { validators } from 'src/utils/validations';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -401,7 +398,13 @@ const quote = async () => {
   }
 
   loader.showLoader('Generando cotización...');
-  const quoteResult = await PostProductsQuote(data);
+  const quoteResult = await ResolveRequestOperation<QuoteProductsResponseModel>(
+    () =>
+      $productApi.apiProductsQuotePost({
+        quoteProductsRequestModel: data,
+      }),
+    'No se pudo crear la cotización.'
+  );
 
   if (quoteResult?.IsSuccessful()) {
     quoteResult.Payload?.generatedFile &&
@@ -615,7 +618,13 @@ const setOptionals = (extras: ValueItemResponseModel[]) => {
 const printQuote = async () => {
   loader.showLoader('Imprimiendo cotización...');
   if (props.id) {
-    const printResult = await PrintQuote(Number.parseInt(props.id));
+    const printResult = await ResolveRequestOperation<FileResultModel>(
+      () =>
+        $productApi.apiProductsQuoteIdReportPost({
+          id: Number.parseInt(`${props.id}`),
+        }),
+      'No se pudo imprimir la cotización.'
+    );
 
     if (printResult?.IsSuccessful()) {
       printResult.Payload && generateFile(printResult.Payload);
@@ -681,9 +690,20 @@ const initializeSpouseBirthDataInput = (include: 'S' | 'N' | null) => {
 };
 
 const initializeModelForCreatedQuote = async () => {
-  model.value =
-    (await GetServiceRequest(Number.parseInt(props.id ?? '0'))).Payload ??
-    undefined;
+  const { Payload } = await ResolveRequestOperation<ServiceRequestModel>(
+    () =>
+      $serviceRequestApi.apiServiceRequestsIdGet({
+        id: Number.parseInt(props.id ?? '0'),
+        rawIncludes: [
+          'type',
+          'responsibleuser',
+          'businessOwner.responsibleuser',
+          'interactions',
+        ],
+      }),
+    'No se pudo obtener los datos de la solicitud.'
+  );
+  Payload && (model.value = Payload);
 
   const values = model.value?.formData as QuoteProductsDataModel;
 
@@ -819,12 +839,24 @@ const initializeModelForCreatedQuote = async () => {
 
 const initializeModel = async () => {
   isInitialized.value = false;
-  const productInfo = await FetchProductos();
+  const avaliables =
+    await ResolveRequestOperation<AvailableProductsResponseModel>(() =>
+      $productApi.apiProductsAvailablesGet()
+    );
+
   if (userInfo.value?.type != TipoUsuario.Empresa) {
     await until(businessStore.fetchBusinessIsReady).toBe(true);
   }
 
-  buildProductSquema(productInfo);
+  if (avaliables.Payload) {
+    buildProductSquema(avaliables.Payload);
+  } else {
+    alert(
+      'Cotizaciones',
+      'No se pudo obtener la información de los productos.'
+    );
+    router.push({ name: siteMap.cotizaciones.name });
+  }
 
   if (props.id) {
     await initializeModelForCreatedQuote();

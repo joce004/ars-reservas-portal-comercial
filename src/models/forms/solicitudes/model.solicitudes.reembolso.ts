@@ -58,7 +58,7 @@ export const initReembolsoForm: IFormGenerator<Reembolso> = () => {
     },
     FechaReembolso: {
       label: 'Fecha de Reembolso',
-      GetType: 'input',
+      GetType: 'date-picker',
       section: 'Datos de la Solicitud',
     },
     NumeroCuenta: {
@@ -77,7 +77,7 @@ export const initReembolsoForm: IFormGenerator<Reembolso> = () => {
     },
     MontoReclamado: {
       label: 'Monto Reclamado',
-      GetType: 'input',
+      GetType: 'number',
       section: 'Datos de la Solicitud',
     },
     CentroMedico: {

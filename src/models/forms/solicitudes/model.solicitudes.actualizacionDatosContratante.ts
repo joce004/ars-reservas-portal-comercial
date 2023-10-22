@@ -28,15 +28,17 @@ export const initActualizacionDatosContratanteForm : IFormGenerator<Actualizacio
     _File_AvalaCambio: {
       label: 'Documento que Avale el Cambio',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
     _File_ComunicacionContratante: {
       label: 'Comunicación por parte del Contratante',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
   };
   return {
     form: actualizacionDatosContratanteForm,
-    sections: [],
+    sections: ['Documentos'],
     files: true,
   };
 };

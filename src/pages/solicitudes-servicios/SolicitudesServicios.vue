@@ -2,7 +2,12 @@
 import { until, useDateFormat } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useQuasar } from 'quasar';
-import { ServiceRequestModel } from 'src/api';
+import {
+  ServiceRequestModel,
+  ServiceRequestModelPaged,
+  ServiceRequestStatus,
+} from 'src/api';
+import { $serviceRequestApi } from 'src/boot/api';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
 import QuerableRecordsComponent from 'src/components/ui/controls/QuerableRecordComponent.vue';
@@ -11,15 +16,12 @@ import {
   TipoEstadoSolicitudType,
 } from 'src/enums/Dictionary.enum';
 import { IColumn } from 'src/models/schemas/IColumn';
-import {
-  DeleteServiceRequest,
-  FetchServiceRequests,
-} from 'src/repository/solicitudesServicio.repository';
 import { siteMap } from 'src/router/siteMap';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useCatalogStore } from 'src/stores/catalog.store';
 import { getSelectList, mapSelectList } from 'src/utils/array';
 import { Loader } from 'src/utils/loading';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -66,12 +68,28 @@ function deleteConfirm(id: number) {
 
 const fetchServiceRequests = async (params?: {
   page?: number;
-  query?: object;
+  query?: Record<string, string>;
 }) => {
-  const serviceRequestResult = await FetchServiceRequests(
-    'ServiceRequestForm',
-    params
-  );
+  const serviceRequestResult =
+    await ResolveRequestOperation<ServiceRequestModelPaged>(() =>
+      $serviceRequestApi.apiServiceRequestsGet({
+        page: params?.page ?? 1,
+        visibility: 'ServiceRequestForm',
+        status: params?.query?.status as ServiceRequestStatus,
+        fullNameContains: params?.query?.FullNameContains,
+        responsibleUserId: params?.query?.ResponsibleUserId,
+        businessOwnerId: params?.query?.BusinessOwnerId
+          ? +params.query.BusinessOwnerId
+          : undefined,
+        rawIncludes: [
+          'type',
+          'responsibleuser',
+          'businessOwner',
+          'businessOwner.responsibleUser',
+        ],
+      }),
+      'No se pudo obtener el listado de solicitudes.'
+    );
 
   if (serviceRequestResult.IsSuccessful()) {
     data.value = serviceRequestResult.Payload?.items ?? [];
@@ -87,7 +105,7 @@ const fetchServiceRequests = async (params?: {
 
 const fetchServiceRequestByQuery = async (params?: {
   page?: number;
-  query?: object;
+  query?: Record<string, string>;
 }) => {
   loader.showLoader('Buscando...');
   await fetchServiceRequests(params);
@@ -97,7 +115,13 @@ const fetchServiceRequestByQuery = async (params?: {
 const deleteServiceRequest = async (id: number) => {
   loader.showLoader('Eliminando...');
 
-  const serviceRequestResult = await DeleteServiceRequest(id);
+  const serviceRequestResult = await ResolveRequestOperation<void>(
+      () =>
+        $serviceRequestApi.apiServiceRequestsIdDelete({
+          id: id,
+        }),
+      'No se pudo eliminar la solicitud.'
+    );
 
   if (serviceRequestResult?.IsSuccessful()) {
     await fetchServiceRequests();
@@ -112,7 +136,10 @@ const deleteServiceRequest = async (id: number) => {
 };
 
 const goToDetail = (id: string) => {
-  router.push({ name: siteMap.solicitudesServicios.detalleSolicitudServicio.name, params: { id: id } });
+  router.push({
+    name: siteMap.solicitudesServicios.detalleSolicitudServicio.name,
+    params: { id: id },
+  });
 };
 
 onMounted(async () => {
@@ -211,9 +238,7 @@ onMounted(async () => {
   <PageContainerComponent>
     <template #actions>
       <NavigationBtnComponent
-        v-if="
-          userInfo?.roles?.includes('ServiceRequests.Create')
-        "
+        v-if="userInfo?.roles?.includes('ServiceRequests.Create')"
         :label="
           $q.screen.gt.md ? 'Crear Solicitud' : $q.screen.gt.sm ? 'Crear' : ''
         "

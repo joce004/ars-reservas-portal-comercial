@@ -5,6 +5,14 @@ import { $roleProfileApi } from 'src/boot/api';
 import { Errors } from 'src/enums/error-list-enum';
 import { initOperationResult } from 'src/utils/operation-result';
 
+//ResolveRequestOperation<void>(
+//  () =>
+//  $accountApi.apiAccountChangePasswordPut({
+//    accountChangePasswordModel: params,
+//  }),
+//  'No se pudo obtener los datos del usuario.'
+//);
+
 export const FetchRoleProfiles = async (params?: {
   page?: number;
   query?: object;

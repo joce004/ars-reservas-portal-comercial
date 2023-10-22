@@ -1,7 +1,9 @@
 import { useDateFormat } from '@vueuse/core';
 import { AxiosError } from 'axios';
 import { Errors } from 'src/enums/error-list-enum';
-import { FindEmpresa, FindPersona } from 'src/repository/helpers.repository';
+import { ResolveRequestOperation } from './request';
+import { CeduladoDispatcherFindEmpresaResponseModel, CeduladoDispatcherFindPersonaResponseModel } from 'src/api';
+import { $helpersApi } from 'src/boot/api';
 
 export const padronPerson = async <
   T extends Nullable<{
@@ -18,7 +20,11 @@ export const padronPerson = async <
   let error = undefined;
   try {
     if (model.identification?.length == 11) {
-      const result = await FindPersona(model.identification);
+      const result = await ResolveRequestOperation<CeduladoDispatcherFindPersonaResponseModel>(() =>
+      $helpersApi.apiSharedHelpersFindPersonaGet({
+        numero: `${model.identification}`,
+      }),
+        'No se pudo obtener los datos de la persona.')
 
       if (result?.IsSuccessful()) {
         const nombres = result.Payload?.nombres?.split(' ');
@@ -49,7 +55,11 @@ export const padronBusiness = async (identification: string) => {
   let error = undefined;
   try {
     if (identification?.length == 9 || identification?.length == 11) {
-      const result = await FindEmpresa(identification);
+      const result = await ResolveRequestOperation<CeduladoDispatcherFindEmpresaResponseModel>(() =>
+      $helpersApi.apiSharedHelpersFindEmpresaGet({
+        numero: identification,
+      }),
+        'No se pudo obtener los datos del intermediario.');
 
       if (result?.IsSuccessful()) {
         model = result.Payload;

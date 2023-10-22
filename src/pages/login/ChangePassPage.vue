@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
+import { $accountApi } from 'src/boot/api';
 import FormBtnComponent from 'src/components/ui/buttom/FormBtnComponent.vue';
 import StandarInputComponent from 'src/components/ui/inputs/StandarInputComponent.vue';
-import { ResetPassword } from 'src/repository/auth.repository';
 import { useAuthStore } from 'src/stores/auth.store';
 import { getAssetUrl } from 'src/utils/assets';
 import { Loader } from 'src/utils/loading';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { ref } from 'vue';
 
 const newPassword = ref<string>('');
@@ -26,11 +27,17 @@ const changePass = async () => {
   loader.showLoader('Cambiando Contraseña...');
   if (newPassword.value == confirmNewPassword.value) {
     try {
-      const changePassResult = await ResetPassword({
-        currentPassword: currentPassword.value,
-        newPassword: newPassword.value,
-        confirmNewPassword: confirmNewPassword.value,
-      });
+      const changePassResult = await ResolveRequestOperation<void>(
+        () =>
+          $accountApi.apiAccountChangePasswordPut({
+            accountChangePasswordModel: {
+              currentPassword: currentPassword.value,
+              newPassword: newPassword.value,
+              confirmNewPassword: confirmNewPassword.value,
+            },
+          }),
+        'No se pudo obtener los datos del usuario.'
+      );
       if (changePassResult.IsSuccessful()) {
         success.value = true;
         message.value = 'Contraseña actualizada, vuelva a iniciar sesión';

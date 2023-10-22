@@ -2,20 +2,22 @@
 import { until, useDateFormat } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useQuasar } from 'quasar';
-import { ServiceRequestModel } from 'src/api';
+import {
+  ServiceRequestModel,
+  ServiceRequestModelPaged,
+  ServiceRequestStatus,
+} from 'src/api';
+import { $serviceRequestApi } from 'src/boot/api';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
 import QuerableRecordsComponent from 'src/components/ui/controls/QuerableRecordComponent.vue';
 import { IColumn } from 'src/models/schemas/IColumn';
-import {
-DeleteServiceRequest,
-FetchServiceRequests,
-} from 'src/repository/solicitudesServicio.repository';
 import { siteMap } from 'src/router/siteMap';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useCatalogStore } from 'src/stores/catalog.store';
 import { mapSelectList } from 'src/utils/array';
 import { Loader } from 'src/utils/loading';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -62,12 +64,29 @@ function deleteConfirm(id: number) {
 
 const fetchServiceRequests = async (params?: {
   page?: number;
-  query?: object;
+  query?: Record<string, string>;
 }) => {
-  const serviceRequestResult = await FetchServiceRequests(
-    'PlanQuoterForm',
-    params
-  );
+  const serviceRequestResult =
+    await ResolveRequestOperation<ServiceRequestModelPaged>(
+      () =>
+        $serviceRequestApi.apiServiceRequestsGet({
+          page: params?.page ?? 1,
+          visibility: 'PlanQuoterForm',
+          status: params?.query?.status as ServiceRequestStatus,
+          fullNameContains: params?.query?.FullNameContains,
+          responsibleUserId: params?.query?.ResponsibleUserId,
+          businessOwnerId: params?.query?.BusinessOwnerId
+            ? +params.query.BusinessOwnerId
+            : undefined,
+          rawIncludes: [
+            'type',
+            'responsibleuser',
+            'businessOwner',
+            'businessOwner.responsibleUser',
+          ],
+        }),
+      'No se pudo obtener el listado de coti.'
+    );
 
   if (serviceRequestResult.IsSuccessful()) {
     data.value = serviceRequestResult.Payload?.items ?? [];
@@ -83,7 +102,7 @@ const fetchServiceRequests = async (params?: {
 
 const fetchServiceRequestByQuery = async (params?: {
   page?: number;
-  query?: object;
+  query?: Record<string, string>;
 }) => {
   loader.showLoader('Buscando...');
   await fetchServiceRequests(params);
@@ -93,7 +112,13 @@ const fetchServiceRequestByQuery = async (params?: {
 const deleteServiceRequest = async (id: number) => {
   loader.showLoader('Eliminando...');
 
-  const serviceRequestResult = await DeleteServiceRequest(id);
+  const serviceRequestResult = await ResolveRequestOperation<void>(
+      () =>
+        $serviceRequestApi.apiServiceRequestsIdDelete({
+          id: id,
+        }),
+      'No se pudo eliminar la Cotización.'
+    );;
 
   if (serviceRequestResult?.IsSuccessful()) {
     await fetchServiceRequests();
@@ -108,11 +133,17 @@ const deleteServiceRequest = async (id: number) => {
 };
 
 const openQuote = (id: string) => {
-  router.push({ name:  siteMap.cotizaciones.detalleCotizacion.name, params: { id: id } });
+  router.push({
+    name: siteMap.cotizaciones.detalleCotizacion.name,
+    params: { id: id },
+  });
 };
 
 const editQuote = (id: string) => {
-  router.push({ name: siteMap.cotizaciones.editarCotizacion.name, params: { id: id } });
+  router.push({
+    name: siteMap.cotizaciones.editarCotizacion.name,
+    params: { id: id },
+  });
 };
 
 onMounted(async () => {
@@ -188,9 +219,7 @@ onMounted(async () => {
   <PageContainerComponent>
     <template #actions>
       <NavigationBtnComponent
-        v-if="
-          userInfo?.roles?.includes('ServiceRequests.PlanQuoter')
-        "
+        v-if="userInfo?.roles?.includes('ServiceRequests.PlanQuoter')"
         :label="
           $q.screen.gt.md ? 'Nueva Cotización' : $q.screen.gt.sm ? 'Nueva' : ''
         "

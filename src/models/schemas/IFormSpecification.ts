@@ -16,7 +16,7 @@ export type IFormGenerator<T> = (...args: any) => IForm<T>;
 
 export type IForm<T> = {
   form: IFormSpecification<T>;
-  sections?: string[];
+  sections: string[];
   files?: boolean;
   methods?: { [key: string]: () => void };
 };

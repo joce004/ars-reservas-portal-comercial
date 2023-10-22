@@ -5,8 +5,9 @@ import fromUnixTime from 'date-fns/fromUnixTime';
 import jwt, { JwtPayload } from 'jwt-decode';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { Cookies } from 'quasar';
-import { AccountProfileResponseModel } from 'src/api';
-import { LogOut, Login, getAccount } from 'src/repository/auth.repository';
+import { AccountProfileResponseModel, UserLoginResponseModel } from 'src/api';
+import { $accountApi } from 'src/boot/api';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { computed, ref, watch } from 'vue';
 
 interface Jwt extends JwtPayload {
@@ -38,7 +39,13 @@ export const useAuthStore = defineStore('auth', () => {
   const isUserAuthenticated = computed(() => !!userAccessToken.value);
 
   const logIn = async (userName: string, password: string) => {
-    const result = await Login(userName, password);
+    const result = await ResolveRequestOperation<UserLoginResponseModel>(
+      () =>
+      $accountApi.apiAccountLoginPost({
+        userLoginRequestModel: { username: userName, password: password },
+      }),
+      'No se pudo realizar la autenticación.'
+    );
 
     if (result.Payload?.token?.authToken) {
       signInWithToken(result.Payload?.token?.authToken);
@@ -58,24 +65,28 @@ export const useAuthStore = defineStore('auth', () => {
     userAccessToken.value = null;
     userAuthState.value.user = null;
     userAuthState.value.profile = null;
-    await LogOut();
+    await $accountApi.apiAccountLogoutPost();
   };
 
   const fetchProfile = async () => {
     try{
       userAuthState.value.profile = userAuthState.value.profile
       if(!userAuthState.value.profile){
-        const account = await getAccount();
+        const account = await ResolveRequestOperation<AccountProfileResponseModel>(
+          () =>
+          $accountApi.apiAccountGet(),
+          'No se pudo obtener los datos del usuario.'
+        );
         if(account.IsSuccessful() && account.Payload){
           userAuthState.value.profile = account.Payload
         }
         else{
-          await LogOut();
+          await $accountApi.apiAccountLogoutPost();
         }
       }
     }
     catch(ex){
-      await LogOut();
+      await $accountApi.apiAccountLogoutPost();
     }
   };
 

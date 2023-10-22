@@ -40,23 +40,28 @@ export const initPrecertificacionForm: IFormGenerator<Precertificacion> = () => 
     _File_IndicacionMedica: {
       label: 'Indicación Médica',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
     _File_CanetAfiliado: {
       label: 'Carné Afiliado',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
     _File_Identificacion: {
       label: 'Número de Identificación',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
     _File_EstudiosPrevios: {
       label: 'Estudios previos realizados',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
     _File_InformeMedico: {
       label: 'Informe médico',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
   };
-  return { form: precertificacionForm, sections: [], files: true };
+  return { form: precertificacionForm, sections: ['Documentos'], files: true };
 };

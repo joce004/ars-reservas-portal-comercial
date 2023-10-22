@@ -146,5 +146,5 @@ export const initIndividualQuotePlanForm: IFormGenerator<
     };
   }
 
-  return { form: IndividualQuotePlan };
+  return { form: IndividualQuotePlan, sections: [] };
 };

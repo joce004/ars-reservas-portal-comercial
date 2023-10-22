@@ -28,7 +28,8 @@ export const initCrearPromotorForm: IFormGenerator<CrearPromotor> = () => {
     _File_Solicitud: {
       label: 'Solicitud Usuario PS-promotor (F-TI-009)',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
   };
-  return { form: crearPromotorForm, sections: [], files: true };
+  return { form: crearPromotorForm, sections: ['Documentos'], files: true };
 };

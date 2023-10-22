@@ -1,11 +1,11 @@
-import { ServiceRequestClientIdentificationType, ServiceRequestModel } from 'src/api';
+import { BusinessModel, ServiceRequestClientIdentificationType, ServiceRequestModel } from 'src/api';
 import {
   IFormGenerator,
   IFieldSpecification,
   IFormSpecification,
 } from 'src/models/schemas/IFormSpecification';
 import { TipoClienteIdentificacion } from 'src/enums/Dictionary.enum';
-import { getSelectList } from 'src/utils/array';
+import { getSelectList, mapSelectList } from 'src/utils/array';
 import { validators } from 'src/utils/validations';
 
 export type ClientData = Nullable<{
@@ -17,28 +17,32 @@ export type ClientData = Nullable<{
   secondName: string;
   secondLastName: string;
   eMail: string;
+  businessOwnerId: number;
+  responsibleUserId: string;
 }>;
 
 export type ClientDataForm = {
-  [Key in keyof ClientData]: IFieldSpecification;
+  [Key in keyof ClientData]?: IFieldSpecification;
 };
 
 export const initRequestClientData = (model?: ServiceRequestModel) => {
   const datosCliente: ClientData = {
     identificationType: model?.clientIdentification?.type ?? null,
     identification: model?.clientIdentification?.value ?? null,
-    birthDate: null,
+    birthDate: model?.client?.birthDate?.substring(0, 10)?? null,
     firstName: model?.client?.firstName ?? null,
     firstLastName: model?.client?.firstLastName ?? null,
     secondName: model?.client?.secondLastName ?? null,
     secondLastName: model?.client?.secondLastName ?? null,
     eMail:
-      model?.clientContactInfo?.find((x) => x.type == 'Email')?.value ?? null,
+    model?.clientContactInfo?.find((x) => x.type == 'Email')?.value ?? null,
+    businessOwnerId: model?.businessOwnerId ?? null,
+    responsibleUserId: model?.responsibleUserId ?? null,
   };
   return datosCliente;
 };
 
-export const initRequestClientDataForm: IFormGenerator<ClientDataForm> = () => {
+export const initRequestClientDataForm = ( {businessList, adminOrOficer}: {businessList?: BusinessModel[], adminOrOficer?: boolean} = {}) => {
   const datosClienteForm: ClientDataForm = {
     identificationType: {
       label: 'Tipo de Identificación',
@@ -86,7 +90,25 @@ export const initRequestClientDataForm: IFormGenerator<ClientDataForm> = () => {
       GetType: 'email',
       section: 'Datos del Cliente',
     },
+
+
   };
+
+  if (adminOrOficer) {
+    datosClienteForm.businessOwnerId = {
+      label: 'Intermediario',
+      GetType: 'select',
+      options: mapSelectList(businessList ?? [], 'name', 'id'),
+      section: 'Datos del Cliente',
+    };
+    datosClienteForm.responsibleUserId = {
+      label: 'Representante',
+      GetType: 'hidden',
+      options: [],
+      section: 'Datos del Cliente',
+    };
+  }
+
   return { form: datosClienteForm, sections: ['Datos del Cliente'] };
 };
 

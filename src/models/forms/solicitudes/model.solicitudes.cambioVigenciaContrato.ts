@@ -59,11 +59,12 @@ export const initCambioVigenciaContratoForm: IFormGenerator<CambioVigenciaContra
     _File_Comunicacion: {
       label: 'Comunicación del Cliente o Intermediario',
       GetType: 'file-picker',
+      section: 'Documentos'
     },
   };
   return {
     form: cambioVigenciaContratoForm,
-    sections: ['Datos de la Solicitud'],
+    sections: ['Datos de la Solicitud', 'Documentos'],
     files: true,
   };
 };

@@ -11,7 +11,7 @@ export function removeDuplicates<T extends number | string>(
 export const getSelectList = (object: Record<string, string | number>) =>
   Object.keys(object).map((x) => ({ text: x, value: object[x] }));
 
-export const mapSelectList: (
+export const mapSelectList: <TModel>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   object: Record<string, any>[],
   textProp: string,
