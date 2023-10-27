@@ -1,36 +1,44 @@
 <script setup lang="ts">
-//TODO: Crear componentes para cada mentenimiento y llamarlos desde esta pagina
-
 import { useCloned } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useQuasar } from 'quasar';
-import ProfileControlComponent from 'src/components/encapsulations/seguridad/ProfileControlComponent.vue';
-import RoleControlComponent from 'src/components/encapsulations/seguridad/RoleControlComponent.vue';
-import UserControlComponent from 'src/components/encapsulations/seguridad/UserControlComponent.vue';
+import {
+  RoleCreationModel,
+  RoleModel,
+  RoleProfileCreationModel,
+  RoleProfileModel,
+  UserCreationModel,
+  UserModel,
+} from 'src/api';
+import { $roleApi, $roleProfileApi, $userApi } from 'src/boot/api';
+import ProfileControlComponent from 'src/components/seguridad/ProfileControlComponent.vue';
+import RoleControlComponent from 'src/components/seguridad/RoleControlComponent.vue';
+import UserControlComponent from 'src/components/seguridad/UserControlComponent.vue';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import DialogFormComponent from 'src/components/ui/containers/DialogFormComponent.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
 import FormGeneratorComponent from 'src/components/ui/forms/FormGeneratorComponent.vue';
 import {
-initCrearPerfilForm,
-initCreateProfileModel,
+  ProfileCreationForm,
+  initCrearPerfilForm,
+  initCreateProfileModel,
 } from 'src/models/forms/seguridad/model.seguridad.perfiles';
 import {
-initCrearRolModel,
-initCreateRolForm,
+  initCrearRolModel,
+  initCreateRolForm,
 } from 'src/models/forms/seguridad/model.seguridad.roles';
 import {
-initCreateUserForm,
-initCreateUserModel,
+  customUserCreationModel,
+  initCreateUserForm,
+  initCreateUserModel,
+  mapUserCreationModel,
 } from 'src/models/forms/seguridad/model.seguridad.usuarios';
-import { IFieldSpecification, IForm } from 'src/models/schemas/IFormSpecification';
-import { PostProfile } from 'src/repository/seguridad.perfiles.repository';
-import { PostRoles } from 'src/repository/seguridad.roles.repository';
-import { PostUser } from 'src/repository/seguridad.usuarios.repository.js';
+import { IFormSpecification } from 'src/models/schemas/IFormSpecification';
 import { siteMap } from 'src/router/siteMap';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useCatalogStore } from 'src/stores/catalog.store';
 import { Loader } from 'src/utils/loading';
+import { ResolveRequestOperation } from 'src/utils/request';
 import { onMounted, ref, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -38,13 +46,31 @@ const tab = ref<'usuarios' | 'perfiles' | 'roles'>('usuarios');
 const updateCount = ref(0);
 
 const { cloned: dialogHandler, sync: resetDialogData } = useCloned<
-  Nullable<{
-    show: boolean;
-    model: object;
-    schema: IForm<Record<string, IFieldSpecification>>;
-    formTitle: string;
-  }>
+  Nullable<
+    | {
+        action: 'CreatUser';
+        show: boolean;
+        model: customUserCreationModel;
+        schema: IFormSpecification<UserCreationModel>;
+        formTitle: string;
+      }
+    | {
+        action: 'CreateProfile';
+        show: boolean;
+        model: RoleProfileCreationModel;
+        schema: IFormSpecification<ProfileCreationForm>;
+        formTitle: string;
+      }
+    | {
+        action: 'CreateRole';
+        show: boolean;
+        model: RoleCreationModel;
+        schema: IFormSpecification<RoleCreationModel>;
+        formTitle: string;
+      }
+  >
 >({
+  action: null,
   show: false,
   model: null,
   schema: null,
@@ -76,27 +102,30 @@ const alert = (title: string, message: string) => {
 const createUser = async () => {
   await fetchBusinessesList().fetchBusinessExec();
   dialogHandler.value = {
+    action: 'CreatUser',
     show: true,
     model: initCreateUserModel(),
-    schema: initCreateUserForm(businessList.value ?? []),
+    schema: initCreateUserForm(businessList.value ?? []).form,
     formTitle: 'Crear Usuario',
   };
 };
 
 const createProfile = () => {
   dialogHandler.value = {
+    action: 'CreateProfile',
     show: true,
     model: initCreateProfileModel(),
-    schema: initCrearPerfilForm(),
+    schema: initCrearPerfilForm().form,
     formTitle: 'Crear Perfil',
   };
 };
 
 const createRole = () => {
   dialogHandler.value = {
+    action: 'CreateRole',
     show: true,
     model: initCrearRolModel(),
-    schema: initCreateRolForm(),
+    schema: initCreateRolForm().form,
     formTitle: 'Crear Rol',
   };
 };
@@ -104,42 +133,53 @@ const createRole = () => {
 const submit = async () => {
   loader.showLoader('Guardando...');
   if (dialogHandler.value.model) {
-    if (tab.value == 'usuarios') {
-      const userResult = await PostUser(structuredClone(toRaw(dialogHandler.value.model)));
+    if (dialogHandler.value.action == 'CreatUser') {
+      const model = dialogHandler.value.model;
+      const userResult = await ResolveRequestOperation<UserModel>({
+        request: () =>
+          $userApi.apiUsersPost({
+            userCreationModel: mapUserCreationModel(toRaw(model)),
+          }),
+      });
 
       if (userResult?.IsSuccessful()) {
         dialogHandler.value.show = false;
         updateCount.value += 1;
       } else {
-        alert(
-          'Usurios',
-          `Error: ${userResult.Errors[0] ?? userResult.Message}`
-        );
+        alert('Usurios', 'Error: No se pudo crear el usuario.');
       }
     }
 
-    if (tab.value == 'perfiles') {
-      const roleProfileResult = await PostProfile(dialogHandler.value.model);
+    if (dialogHandler.value.action == 'CreateProfile') {
+      const model = dialogHandler.value.model;
+      const roleProfileResult = await ResolveRequestOperation<RoleProfileModel>(
+        {
+          request: () =>
+            $roleProfileApi.apiProfilesPost({
+              roleProfileCreationModel: model,
+            }),
+        }
+      );
 
       if (roleProfileResult?.IsSuccessful()) {
         dialogHandler.value.show = false;
         updateCount.value += 1;
       } else {
-        alert(
-          'Perfiles',
-          `Error: ${roleProfileResult.Errors[0] ?? roleProfileResult.Message}`
-        );
+        alert('Perfiles', 'Error: No se pudo crear el perfil.');
       }
     }
 
-    if (tab.value == 'roles') {
-      const roleResult = await PostRoles(dialogHandler.value.model);
+    if (dialogHandler.value.action == 'CreateRole') {
+      const model = dialogHandler.value.model;
+      const roleResult = await ResolveRequestOperation<RoleModel>({
+        request: () => $roleApi.apiRolesPost({ roleCreationModel: model }),
+      });
 
       if (roleResult?.IsSuccessful()) {
         dialogHandler.value.show = false;
         updateCount.value += 1;
       } else {
-        alert('Roles', `Error: ${roleResult.Errors[0] ?? roleResult.Message}`);
+        alert('Roles', 'No se pudo crear el rol.');
       }
     }
   }
@@ -256,8 +296,7 @@ onMounted(() => {
     <DialogFormComponent :model-value="dialogHandler.show">
       <FormGeneratorComponent
         v-model="dialogHandler.model"
-        :form-schema="dialogHandler.schema.form"
-        :sections="dialogHandler.schema.sections"
+        :form-schema="dialogHandler.schema"
         :form-name="dialogHandler.formTitle"
         :submit-label="dialogHandler.formTitle"
         controls

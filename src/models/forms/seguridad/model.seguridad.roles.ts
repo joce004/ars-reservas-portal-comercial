@@ -14,7 +14,9 @@ export const initCrearRolModel = () => {
 
 export const initEditarRolModel = (profile: RoleModel) => {
   const actualizacionDatosContratante: RoleEditionModel = {
+    id: profile.id,
     name: profile.name,
+    status: profile.status
   };
   return actualizacionDatosContratante;
 };
@@ -24,9 +26,10 @@ export const initCreateRolForm: IFormGenerator<RoleCreationModel> = () => {
     name: {
       label: 'Nombre',
       GetType: 'standar-input',
+      section: 'default'
     },
   };
-  return { form: crearRol };
+  return { form: crearRol, sections: [] };
 };
 
 export const initEditarRolForm: IFormGenerator<RoleEditionModel> = () => {
@@ -35,7 +38,8 @@ export const initEditarRolForm: IFormGenerator<RoleEditionModel> = () => {
       label: 'Nombre',
       GetType: 'standar-input',
       rules: [validators.Required],
+      section: 'default'
     },
   };
-  return { form: editarRol };
+  return { form: editarRol, sections: []};
 };

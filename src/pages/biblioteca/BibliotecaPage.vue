@@ -44,13 +44,13 @@ const resetFolder = () => {
 
 const search = async () => {
   loader.showLoader('Buscando...');
-  const resources = await ResolveRequestOperation<FolderResponseModel>(
-    () =>
+  const resources = await ResolveRequestOperation<FolderResponseModel>({
+    request: () =>
       $resourcesLibraryApi.apiSharedLibraryPublicGet({
         name: searchValue.value,
         viewType: 'OnlyFiles',
       }),
-    'No se pudo obtener los recursos.'
+    }
   );
   resources?.Payload && (directoryRoute.value = [resources.Payload]);
   showingByDirectory.value = false;
@@ -59,12 +59,12 @@ const search = async () => {
 
 const fetch = async () => {
   loader.showLoader('Cargando...');
-  const resources = await await ResolveRequestOperation<FolderResponseModel>(
-    () =>
+  const resources = await await ResolveRequestOperation<FolderResponseModel>({
+    request: () =>
       $resourcesLibraryApi.apiSharedLibraryPublicGet({
         viewType: 'Default',
       }),
-    'No se pudo obtener los recursos.'
+    }
   );
   resources.Payload && (resourcesInfo.value = resources.Payload);
   showingByDirectory.value = true;

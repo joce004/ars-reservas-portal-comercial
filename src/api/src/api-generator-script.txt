@@ -1,0 +1,1 @@
+openapi-generator-cli generate -i src/api/src/swagger.json -o src/api -g typescript-axios --additional-properties=supportsES6=true,useSingleRequestParameter=true,withSeparateModelsAndApi=true,modelPackage=models,apiPackage=api,withoutPrefixEnums=true,enumPropertyNaming=original --global-property=verbose=true,apiTests=false,modelTests=false

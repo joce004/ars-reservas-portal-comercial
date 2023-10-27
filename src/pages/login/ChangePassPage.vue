@@ -27,8 +27,8 @@ const changePass = async () => {
   loader.showLoader('Cambiando Contraseña...');
   if (newPassword.value == confirmNewPassword.value) {
     try {
-      const changePassResult = await ResolveRequestOperation<void>(
-        () =>
+      const changePassResult = await ResolveRequestOperation<void>({
+        request: () =>
           $accountApi.apiAccountChangePasswordPut({
             accountChangePasswordModel: {
               currentPassword: currentPassword.value,
@@ -36,8 +36,7 @@ const changePass = async () => {
               confirmNewPassword: confirmNewPassword.value,
             },
           }),
-        'No se pudo obtener los datos del usuario.'
-      );
+      });
       if (changePassResult.IsSuccessful()) {
         success.value = true;
         message.value = 'Contraseña actualizada, vuelva a iniciar sesión';
@@ -46,7 +45,7 @@ const changePass = async () => {
         message.value = changePassResult.Message;
       }
     } catch (error) {
-      message.value = (error as { message: string }).message;
+      message.value = 'No se pudo obtener los datos del usuario.';
     }
   } else {
     message.value = 'Las contraseñas no coinciden.';

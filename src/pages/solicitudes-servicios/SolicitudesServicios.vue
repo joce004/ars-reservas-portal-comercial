@@ -71,25 +71,25 @@ const fetchServiceRequests = async (params?: {
   query?: Record<string, string>;
 }) => {
   const serviceRequestResult =
-    await ResolveRequestOperation<ServiceRequestModelPaged>(() =>
-      $serviceRequestApi.apiServiceRequestsGet({
-        page: params?.page ?? 1,
-        visibility: 'ServiceRequestForm',
-        status: params?.query?.status as ServiceRequestStatus,
-        fullNameContains: params?.query?.FullNameContains,
-        responsibleUserId: params?.query?.ResponsibleUserId,
-        businessOwnerId: params?.query?.BusinessOwnerId
-          ? +params.query.BusinessOwnerId
-          : undefined,
-        rawIncludes: [
-          'type',
-          'responsibleuser',
-          'businessOwner',
-          'businessOwner.responsibleUser',
-        ],
-      }),
-      'No se pudo obtener el listado de solicitudes.'
-    );
+    await ResolveRequestOperation<ServiceRequestModelPaged>({
+      request: () =>
+        $serviceRequestApi.apiServiceRequestsGet({
+          page: params?.page ?? 1,
+          visibility: 'ServiceRequestForm',
+          status: params?.query?.status as ServiceRequestStatus,
+          fullNameContains: params?.query?.FullNameContains,
+          responsibleUserId: params?.query?.ResponsibleUserId,
+          businessOwnerId: params?.query?.BusinessOwnerId
+            ? +params.query.BusinessOwnerId
+            : undefined,
+          rawIncludes: [
+            'type',
+            'responsibleuser',
+            'businessOwner',
+            'businessOwner.responsibleUser',
+          ],
+        }),
+    });
 
   if (serviceRequestResult.IsSuccessful()) {
     data.value = serviceRequestResult.Payload?.items ?? [];
@@ -98,7 +98,7 @@ const fetchServiceRequests = async (params?: {
   } else {
     alert(
       'Solicitudes de Servicio',
-      `Error: ${serviceRequestResult.Errors[0] ?? serviceRequestResult.Message}`
+      'Error: No se pudo obtener el listado de solicitudes.'
     );
   }
 };
@@ -115,20 +115,19 @@ const fetchServiceRequestByQuery = async (params?: {
 const deleteServiceRequest = async (id: number) => {
   loader.showLoader('Eliminando...');
 
-  const serviceRequestResult = await ResolveRequestOperation<void>(
-      () =>
-        $serviceRequestApi.apiServiceRequestsIdDelete({
-          id: id,
-        }),
-      'No se pudo eliminar la solicitud.'
-    );
+  const serviceRequestResult = await ResolveRequestOperation<void>({
+    request: () =>
+      $serviceRequestApi.apiServiceRequestsIdDelete({
+        id: id,
+      }),
+  });
 
   if (serviceRequestResult?.IsSuccessful()) {
     await fetchServiceRequests();
   } else {
     alert(
       'Solicitudes de Servicio',
-      `Error: ${serviceRequestResult.Errors[0] ?? serviceRequestResult.Message}`
+      'Error: No se pudo eliminar la solicitud.'
     );
   }
 

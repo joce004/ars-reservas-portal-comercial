@@ -117,18 +117,18 @@ const alert = (title: string, message: string) => {
 const editBusinessServiceRequestType = async (id: number) => {
   loader.showLoader('Guardando...');
   const serviceRequestTypeResult =
-    await ResolveRequestOperation<ServiceRequestTypeModel>(
-      () =>
+    await ResolveRequestOperation<ServiceRequestTypeModel>({
+      request: () =>
         $businessServiceRequestTypeApi.apiBusinessesServiceRequestTypesIdGet({
           id: id,
         }),
-      'No se pudo obtener los datos del servicio.'
-    );
+    });
+
   loader.hideLoader();
   if (
     serviceRequestTypeResult.IsSuccessful() &&
     serviceRequestTypeResult.Payload
-  )
+  ) {
     dialogHandler.value = {
       show: true,
       model: initEditBusinessServiceModel(serviceRequestTypeResult.Payload),
@@ -136,6 +136,12 @@ const editBusinessServiceRequestType = async (id: number) => {
       formTitle: 'Configuración del Servicio',
       formAction: 'UR',
     };
+  } else {
+    alert(
+      'Intermediarios',
+      'Error: No se pudo obtener los datos del servicio.'
+    );
+  }
 };
 
 const fetchServiceRequestType = async (params?: {
@@ -143,14 +149,13 @@ const fetchServiceRequestType = async (params?: {
   query?: object;
 }) => {
   const businessesResult =
-    await ResolveRequestOperation<ServiceRequestTypeModelPaged>(
-      () =>
+    await ResolveRequestOperation<ServiceRequestTypeModelPaged>({
+      request: () =>
         $serviceRequestTypeApi.apiServiceRequestTypesGet({
           page: params?.page ?? 1,
           rawIncludes: ['requestType'],
         }),
-      'No se pudo obtener el listado de servicios.'
-    );
+    });
 
   if (businessesResult.IsSuccessful()) {
     data.value =
@@ -164,7 +169,7 @@ const fetchServiceRequestType = async (params?: {
   } else {
     alert(
       'Intermediarios',
-      `Error: ${businessesResult.Errors[0] ?? businessesResult.Message}`
+      'Error: No se pudo obtener el listado de servicios.'
     );
   }
 };
@@ -174,14 +179,13 @@ const fetchBusinessServiceRequestType = async (params?: {
   query?: object;
 }) => {
   const businessesResult =
-    await ResolveRequestOperation<BusinessServiceRequestTypeModelPaged>(
-      () =>
+    await ResolveRequestOperation<BusinessServiceRequestTypeModelPaged>({
+      request: () =>
         $businessServiceRequestTypeApi.apiBusinessesServiceRequestTypesGet({
           page: params?.page ?? 1,
           rawIncludes: ['requestType'],
         }),
-      'No se pudo obtener el servicio.'
-    );
+    });
 
   if (businessesResult.IsSuccessful()) {
     data.value =
@@ -193,10 +197,7 @@ const fetchBusinessServiceRequestType = async (params?: {
     pages.value.total = businessesResult.Payload?.totalPages ?? 1;
     pages.value.curent = businessesResult.Payload?.page ?? 1;
   } else {
-    alert(
-      'Intermediarios',
-      `Error: ${businessesResult.Errors[0] ?? businessesResult.Message}`
-    );
+    alert('Intermediarios', 'Error: No se pudo obtener el servicio.');
   }
 };
 
@@ -212,80 +213,26 @@ const fetchServiceRequestTypeByQuery = async (params?: {
 const submit = async () => {
   loader.showLoader('Guardando...');
   if (dialogHandler.value.model) {
-    //if (dialogHandler.value.formAction == 'C') {
-    //  (
-    //    dialogHandler.value.model as BusinessCreationModel
-    //  ).inheritServiceRequestTypesFromOwner = true;
-    //  const businessResult = await PostBusiness(dialogHandler.value.model);
-    //
-    //  if (businessResult?.IsSuccessful()) {
-    //    resetDialogData();
-    //    await fetchBusinesses();
-    //  } else {
-    //    alert(
-    //      'Intermediarios',
-    //      `Error: ${businessResult.Errors[0] ?? businessResult.Message}`
-    //    );
-    //  }
-    //}
-
-    //if (dialogHandler.value.formAction == 'U') {
-    //  const businessResult = await PutBusiness(dialogHandler.value.model);
-    //
-    //  if (businessResult?.IsSuccessful()) {
-    //    resetDialogData();
-    //    await fetchBusinesses();
-    //  } else {
-    //    alert(
-    //      'Intermediarios',
-    //      `Error: ${businessResult.Errors[0] ?? businessResult.Message}`
-    //    );
-    //  }
-    //}
-
     if (dialogHandler.value.formAction == 'UR') {
       const businessServiceRequestResult =
-        await ResolveRequestOperation<BusinessServiceRequestTypeModel>(
-          () =>
+        await ResolveRequestOperation<BusinessServiceRequestTypeModel>({
+          request: () =>
             $businessServiceRequestTypeApi.apiBusinessesServiceRequestTypesPut({
               businessServiceRequestTypeEditionModel:
                 dialogHandler.value.model ?? {},
             }),
-          'No se pudo modificar el servicio.'
-        );
+        });
 
       if (businessServiceRequestResult?.IsSuccessful()) {
         await fetchServiceRequestType();
         resetDialogData();
       } else {
-        alert(
-          'Intermediarios',
-          `Error: ${
-            businessServiceRequestResult.Errors[0] ??
-            businessServiceRequestResult.Message
-          }`
-        );
+        alert('Intermediarios', 'Error: No se pudo modificar el servicio.');
       }
     }
   }
   loader.hideLoader();
 };
-
-//const deleteBusiness = async (id: number) => {
-//  loader.showLoader('Eliminando...');
-//
-//  const businessResult = await DeleteBusiness(id);
-//
-//  if (businessResult?.IsSuccessful()) {
-//    await fetchBusinesses();
-//  } else {
-//    alert(
-//      'Intermediarios',
-//      `Error: ${businessResult.Errors[0] ?? businessResult.Message}`
-//    );
-//  }
-//  loader.hideLoader();
-//};
 
 onMounted(async () => {
   loader.showLoader('Cargando...');
@@ -335,17 +282,6 @@ onMounted(async () => {
 
 <template>
   <PageContainerComponent :user-type="userInfo?.type">
-    <template #actions>
-      <!-- <NavigationBtnComponent
-        v-if="userInfo?.roles?.includes('Businesses.Create')"
-        :label="
-          $q.screen.gt.md ? `Crear Servicio` : $q.screen.gt.sm ? 'Crear' : ''
-        "
-        icon="fa-solid fa-circle-plus"
-        @click="createBusiness"
-      /> -->
-    </template>
-
     <QuerableRecordsComponent
       :model-value="data"
       title="Servicios"

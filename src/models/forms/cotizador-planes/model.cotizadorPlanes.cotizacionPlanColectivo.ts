@@ -41,31 +41,37 @@ export const initColectiveQuotePlanForm: IFormGenerator<IColectiveQuotePlan> = (
       label: 'RNC',
       GetType: 'business-id',
       rules: [validators.Required],
+      section: 'default'
     },
     client: {
       label: 'Cliente',
       GetType: 'input',
       rules: [validators.Required],
+      section: 'default'
     },
     contactName: {
       label: 'Persona de Contacto',
       GetType: 'input',
       rules: [validators.Required],
+      section: 'default'
     },
     EMail: {
       label: 'Correo Electrónico',
       GetType: 'email',
       rules: [validators.email],
+      section: 'default'
     },
     businessOwnerId: {
       label: 'Intermediario',
       GetType: 'hidden',
       options: [],
+      section: 'default'
     },
     responsibleUserId: {
       label: 'Representante',
       GetType: 'hidden',
       options: [],
+      section: 'default'
     },
   };
 
@@ -74,13 +80,15 @@ export const initColectiveQuotePlanForm: IFormGenerator<IColectiveQuotePlan> = (
       label: 'Intermediario',
       GetType: 'select',
       options: mapSelectList(businessList ?? [], 'name', 'id'),
+      section: 'default'
     };
     ColectiveQuotePlan.responsibleUserId = {
       label: 'Representante',
       GetType: 'hidden',
       options: [],
+      section: 'default'
     }
   }
 
-  return { form: ColectiveQuotePlan };
+  return { form: ColectiveQuotePlan, sections: [] };
 };

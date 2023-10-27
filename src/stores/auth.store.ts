@@ -40,12 +40,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logIn = async (userName: string, password: string) => {
     const result = await ResolveRequestOperation<UserLoginResponseModel>(
-      () =>
-      $accountApi.apiAccountLoginPost({
+    {
+      request: () => $accountApi.apiAccountLoginPost({
         userLoginRequestModel: { username: userName, password: password },
-      }),
-      'No se pudo realizar la autenticación.'
-    );
+      }), messageError: 'No se pudo realizar la autenticación.'
+    }    );
 
     if (result.Payload?.token?.authToken) {
       signInWithToken(result.Payload?.token?.authToken);
@@ -73,10 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
       userAuthState.value.profile = userAuthState.value.profile
       if(!userAuthState.value.profile){
         const account = await ResolveRequestOperation<AccountProfileResponseModel>(
-          () =>
-          $accountApi.apiAccountGet(),
-          'No se pudo obtener los datos del usuario.'
-        );
+        { request: () => $accountApi.apiAccountGet(), messageError: 'No se pudo obtener los datos del usuario.' }        );
         if(account.IsSuccessful() && account.Payload){
           userAuthState.value.profile = account.Payload
         }

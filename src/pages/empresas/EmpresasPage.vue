@@ -118,15 +118,14 @@ const editBusiness = async (id: number) => {
   if (!usersStore.fetchUserIsReady.value) {
     await until(usersStore.fetchUserIsReady).toBe(true);
   }
-  const businessResult = await ResolveRequestOperation<BusinessModel>(
-    () =>
+  const businessResult = await ResolveRequestOperation<BusinessModel>({
+    request: () =>
       $businessApi.apiBusinessesIdGet({
         id: id,
       }),
-    'No se pudo obtener los datos del intermediario.'
-  );
+  });
   loader.hideLoader();
-  if (businessResult.IsSuccessful() && businessResult.Payload)
+  if (businessResult.IsSuccessful() && businessResult.Payload) {
     dialogHandler.value = {
       show: true,
       model: {
@@ -136,6 +135,12 @@ const editBusiness = async (id: number) => {
       schema: initBusinessForm(userInfo.value?.type),
       formTitle: 'Editar Intermediarios',
     };
+  } else {
+    alert(
+      'Intermediarios',
+      'Error: No se pudo obtener los datos del intermediario.'
+    );
+  }
 
   if (dialogHandler.value.schema?.form?.responsibleUserId) {
     dialogHandler.value.schema.form.responsibleUserId.options = mapSelectList(
@@ -150,8 +155,8 @@ const fetchBusinesses = async (params?: {
   page?: number;
   query?: Record<string, string>;
 }) => {
-  const businessesResult = await ResolveRequestOperation<BusinessModelPaged>(
-    () =>
+  const businessesResult = await ResolveRequestOperation<BusinessModelPaged>({
+    request: () =>
       $businessApi.apiBusinessesGet({
         page: params?.page ?? 1,
         nameContains: params?.query?.name,
@@ -162,8 +167,7 @@ const fetchBusinesses = async (params?: {
             : (params?.query?.type as BusinessType),
         rawIncludes: ['owner'],
       }),
-    'No se pudo obtener el listado de intermediarios.'
-  );
+  });
 
   if (businessesResult.IsSuccessful()) {
     data.value = businessesResult.Payload?.items ?? [];
@@ -172,7 +176,7 @@ const fetchBusinesses = async (params?: {
   } else {
     alert(
       'Intermediarios',
-      `Error: ${businessesResult.Errors[0] ?? businessesResult.Message}`
+      'Error: No se pudo obtener el listado de intermediarios.'
     );
   }
 };
@@ -224,22 +228,18 @@ const submit = async () => {
       };
 
       const businessResult =
-        await ResolveRequestOperation<BusinessCreationModel>(
-          () =>
+        await ResolveRequestOperation<BusinessCreationModel>({
+          request: () =>
             $businessApi.apiBusinessesPost({
               businessCreationModel: modelToPost,
             }),
-          'No se pudo crear el intermediario.'
-        );
+        });
 
       if (businessResult?.IsSuccessful()) {
         resetDialogData();
         await fetchBusinesses();
       } else {
-        alert(
-          'Intermediarios',
-          `Error: ${businessResult.Errors[0] ?? businessResult.Message}`
-        );
+        alert('Intermediarios', 'Error: No se pudo crear el intermediario.');
       }
     }
 
@@ -273,13 +273,12 @@ const submit = async () => {
         },
       };
 
-      const businessResult = await ResolveRequestOperation<BusinessModel>(
-        () =>
+      const businessResult = await ResolveRequestOperation<BusinessModel>({
+        request: () =>
           $businessApi.apiBusinessesPut({
             businessEditionModel: modelToPut,
           }),
-        'No se pudo modificar el intermediario.'
-      );
+      });
 
       if (businessResult?.IsSuccessful()) {
         resetDialogData();
@@ -287,7 +286,7 @@ const submit = async () => {
       } else {
         alert(
           'Intermediarios',
-          `Error: ${businessResult.Errors[0] ?? businessResult.Message}`
+          'Error: No se pudo modificar el intermediario.'
         );
       }
     }
@@ -300,21 +299,17 @@ const submit = async () => {
 const deleteBusiness = async (id: number) => {
   loader.showLoader('Eliminando...');
 
-  const businessResult = await ResolveRequestOperation<void>(
-    () =>
+  const businessResult = await ResolveRequestOperation<void>({
+    request: () =>
       $businessApi.apiBusinessesIdDelete({
         id: id,
       }),
-    'No se pudo eliminar el intermediario.'
-  );
+  });
 
   if (businessResult?.IsSuccessful()) {
     await fetchBusinesses();
   } else {
-    alert(
-      'Intermediarios',
-      `Error: ${businessResult.Errors[0] ?? businessResult.Message}`
-    );
+    alert('Intermediarios', 'Error: No se pudo eliminar el intermediario.');
   }
   loader.hideLoader();
 };

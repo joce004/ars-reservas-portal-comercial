@@ -204,13 +204,12 @@ const submit = async () => {
     };
     loader.showLoader('Guardando...');
     const serviceRequestResult =
-      await ResolveRequestOperation<ServiceRequestModel>(
-        () =>
+      await ResolveRequestOperation<ServiceRequestModel>({
+        request: () =>
           $serviceRequestApi.apiServiceRequestsPut({
             serviceRequestEditionModel: data,
           }),
-        'No se pudo actualizar la solicitud.'
-      );
+      });
     loader.hideLoader();
 
     if (serviceRequestResult?.IsSuccessful()) {
@@ -219,9 +218,7 @@ const submit = async () => {
     } else {
       alert(
         'Solicitudes de Servicio',
-        `Error: ${
-          serviceRequestResult.Errors[0] ?? serviceRequestResult.Message
-        }`
+        'Error: No se pudo actualizar la solicitud.'
       );
     }
   }
@@ -235,11 +232,12 @@ const submit = async () => {
     if (model.value?.status != data.status) {
       loader.showLoader('Guardando...');
       const serviceRequestResult = await ResolveRequestOperation<ErrorResponse>(
-        () =>
-          $serviceRequestApi.apiServiceRequestsStatusPut({
-            serviceRequestStatusChangeModel: data,
-          }),
-        'No se pudo actualizar el estado.'
+        {
+          request: () =>
+            $serviceRequestApi.apiServiceRequestsStatusPut({
+              serviceRequestStatusChangeModel: data,
+            }),
+        }
       );
 
       loader.hideLoader();
@@ -249,9 +247,7 @@ const submit = async () => {
       } else {
         alert(
           'Estado de la Solicitud de Servicio',
-          `Error: ${
-            serviceRequestResult.Errors[0] ?? serviceRequestResult.Message
-          }`
+          'Error: No se pudo actualizar el estado.'
         );
         resetEstatus();
       }
@@ -267,8 +263,8 @@ const submit = async () => {
 const getServiceRequest = async (id: number) => {
   loader.showLoader('Cargando...');
   const serviceRequestResult =
-    await ResolveRequestOperation<ServiceRequestModel>(
-      () =>
+    await ResolveRequestOperation<ServiceRequestModel>({
+      request: () =>
         $serviceRequestApi.apiServiceRequestsIdGet({
           id: id,
           rawIncludes: [
@@ -278,8 +274,7 @@ const getServiceRequest = async (id: number) => {
             'interactions',
           ],
         }),
-      'No se pudo obtener los datos de la solicitud.'
-    );
+    });
   loader.hideLoader();
   if (serviceRequestResult.IsSuccessful() && serviceRequestResult.Payload) {
     model.value = serviceRequestResult.Payload;
@@ -294,7 +289,7 @@ const getServiceRequest = async (id: number) => {
   } else {
     alert(
       'Solicitudes de Servicio',
-      `Error: ${serviceRequestResult.Errors[0] ?? serviceRequestResult.Message}`
+      'Error: No se pudo obtener los datos de la solicitud.'
     );
   }
 };
@@ -459,8 +454,10 @@ siteMap;
             class="col-xs-12 col-md-auto"
           />
           <ItemResume
-          v-if="userInfo?.roles?.includes('ServiceRequests.Edit') &&
-                model.status != 'Completed'"
+            v-if="
+              userInfo?.roles?.includes('ServiceRequests.Edit') &&
+              model.status != 'Completed'
+            "
             title="Estado"
             :value="statusOptions.find((x) => x.value == status)?.text"
             html-class="text-subtitle1"

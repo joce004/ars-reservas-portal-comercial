@@ -15,10 +15,10 @@ import {
   ValueItemResponseModel,
 } from 'src/api';
 import { $productApi, $serviceRequestApi } from 'src/boot/api';
-import InsuredAmountComponent from 'src/components/encapsulations/cotizaciones/InsuredAmountComponent.vue';
-import ProductFeeComponent from 'src/components/encapsulations/cotizaciones/ProductFeeComponent.vue';
-import ProductsOpcionalsComponent from 'src/components/encapsulations/cotizaciones/ProductsOpcionalsComponent.vue';
-import TotalFeeComponent from 'src/components/encapsulations/cotizaciones/TotalFeeComponent.vue';
+import InsuredAmountComponent from 'src/components/cotizaciones/InsuredAmountComponent.vue';
+import ProductFeeComponent from 'src/components/cotizaciones/ProductFeeComponent.vue';
+import ProductsOpcionalsComponent from 'src/components/cotizaciones/ProductsOpcionalsComponent.vue';
+import TotalFeeComponent from 'src/components/cotizaciones/TotalFeeComponent.vue';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import ItemResume from 'src/components/ui/containers/ItemResume.vue';
 import PageContainerComponent from 'src/components/ui/containers/PageContainerComponent.vue';
@@ -235,28 +235,34 @@ const quote = async () => {
       }),
 
     extras: QuoteHandler.value.Extras.filter((x) => x.Option)
-      .filter(
-        (extra) =>
-          (extra.Option &&
-            extra.OptionList?.every((x) => x.value === undefined) &&
-            extra.Percent) ||
-          (extra.Option &&
-            !extra.OptionList?.every((x) => x.value === undefined))
-      )
-      .map((extra) => {
-        return {
-          id: extra.Id,
-          values:
-            extra.Option && extra.Option !== 'true'
-              ? [
-                  {
-                    id: extra.Option,
-                    values: extra.Percent ? [{ id: extra.Percent }] : undefined,
-                  },
-                ]
-              : undefined,
-        };
-      }),
+      .filter((extra) => {
+        if (extra.Option) {
+          if (extra.OptionList?.every((x) => x.name === 'Incluido'))
+            return true;
+          if (extra.Option === 'true') return true;
+          if (extra.Percent) return true;
+          if (
+            !extra.Percent &&
+            !extra.OptionList?.every((option) =>
+              option.tags?.includes('select')
+            )
+          )
+            return true;
+        }
+        return false;
+      })
+      .map((extra) => ({
+        id: extra.Id,
+        values:
+          extra.Option && extra.Option !== 'true'
+            ? [
+                {
+                  id: extra.Option,
+                  values: extra.Percent ? [{ id: extra.Percent }] : undefined,
+                },
+              ]
+            : undefined,
+      })),
     distributions: [],
   };
 
@@ -399,11 +405,12 @@ const quote = async () => {
 
   loader.showLoader('Generando cotización...');
   const quoteResult = await ResolveRequestOperation<QuoteProductsResponseModel>(
-    () =>
-      $productApi.apiProductsQuotePost({
-        quoteProductsRequestModel: data,
-      }),
-    'No se pudo crear la cotización.'
+    {
+      request: () =>
+        $productApi.apiProductsQuotePost({
+          quoteProductsRequestModel: data,
+        }),
+    }
   );
 
   if (quoteResult?.IsSuccessful()) {
@@ -415,10 +422,7 @@ const quote = async () => {
     });
   }
   if (!quoteResult?.IsSuccessful()) {
-    alert(
-      'Cotizaciones',
-      `Error: ${quoteResult?.Errors?.[0] ?? quoteResult?.Message}`
-    );
+    alert('Cotizaciones', 'Error: No se pudo crear la cotización.');
   }
   loader.hideLoader();
 };
@@ -618,22 +622,18 @@ const setOptionals = (extras: ValueItemResponseModel[]) => {
 const printQuote = async () => {
   loader.showLoader('Imprimiendo cotización...');
   if (props.id) {
-    const printResult = await ResolveRequestOperation<FileResultModel>(
-      () =>
+    const printResult = await ResolveRequestOperation<FileResultModel>({
+      request: () =>
         $productApi.apiProductsQuoteIdReportPost({
           id: Number.parseInt(`${props.id}`),
         }),
-      'No se pudo imprimir la cotización.'
-    );
+    });
 
     if (printResult?.IsSuccessful()) {
       printResult.Payload && generateFile(printResult.Payload);
     }
     if (!printResult?.IsSuccessful()) {
-      alert(
-        'Cotizaciones',
-        `Error: ${printResult?.Errors[0] ?? printResult?.Message}`
-      );
+      alert('Cotizaciones', 'Error: No se pudo imprimir la cotización.');
     }
     loader.hideLoader();
   }
@@ -690,8 +690,8 @@ const initializeSpouseBirthDataInput = (include: 'S' | 'N' | null) => {
 };
 
 const initializeModelForCreatedQuote = async () => {
-  const { Payload } = await ResolveRequestOperation<ServiceRequestModel>(
-    () =>
+  const result = await ResolveRequestOperation<ServiceRequestModel>({
+    request: () =>
       $serviceRequestApi.apiServiceRequestsIdGet({
         id: Number.parseInt(props.id ?? '0'),
         rawIncludes: [
@@ -701,9 +701,16 @@ const initializeModelForCreatedQuote = async () => {
           'interactions',
         ],
       }),
-    'No se pudo obtener los datos de la solicitud.'
-  );
-  Payload && (model.value = Payload);
+  });
+
+  if (!result.IsSuccessful()) {
+    alert(
+      'Cotizaciones',
+      'No se pudo obtener la información de los productos disponibles,'
+    );
+    return;
+  }
+  result.Payload && (model.value = result.Payload);
 
   const values = model.value?.formData as QuoteProductsDataModel;
 
@@ -727,19 +734,14 @@ const initializeModelForCreatedQuote = async () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     values.extras?.forEach((extraValue) => {
-      QuoteHandler.value.Extras.find((extra) => extra.Id == extraValue?.id)
-        ? ((
-            QuoteHandler.value.Extras.find(
-              (extra) => extra.Id == extraValue?.id
-            ) as IProductOptional
-          ).Option = extraValue.values?.filter(
-            (x) => x.group == TipoExtra.Opcional
-          ).length
-            ? 'true'
-            : extraValue?.values?.[0]?.id ?? null)
-        : null;
+      const element = QuoteHandler.value.Extras.find(
+        (extra) => extra.Id == extraValue?.id
+      );
+      const index = element ? QuoteHandler.value.Extras.indexOf(element) : -1;
 
-      QuoteHandler.value.Extras.find((extra) => extra.Id == extraValue?.id)
+      QuoteHandler.value.Extras[index].Option = extraValue?.values?.[0]?.id ?? null
+
+      QuoteHandler.value.Extras[index]
         ? ((
             QuoteHandler.value.Extras.find(
               (extra) => extra.Id == extraValue.id
@@ -840,9 +842,9 @@ const initializeModelForCreatedQuote = async () => {
 const initializeModel = async () => {
   isInitialized.value = false;
   const avaliables =
-    await ResolveRequestOperation<AvailableProductsResponseModel>(() =>
-      $productApi.apiProductsAvailablesGet()
-    );
+    await ResolveRequestOperation<AvailableProductsResponseModel>({
+      request: () => $productApi.apiProductsAvailablesGet(),
+    });
 
   if (userInfo.value?.type != TipoUsuario.Empresa) {
     await until(businessStore.fetchBusinessIsReady).toBe(true);

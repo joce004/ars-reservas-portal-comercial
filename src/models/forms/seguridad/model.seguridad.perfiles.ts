@@ -11,7 +11,7 @@ export type ProfileCreationForm = {
   [Key in keyof RoleProfileCreationModel]: IFieldSpecification;
 }
 export const initCreateProfileModel = () => {
-  const actualizacionDatosContratante: Nullable<RoleProfileCreationModel> = {
+  const actualizacionDatosContratante: RoleProfileCreationModel = {
     name: null,
     code: null,
   };
@@ -29,7 +29,7 @@ export const initCrearPerfilForm: IFormGenerator<ProfileCreationForm> = () => {
       GetType: 'standar-input',
     },
   };
-  return { form: crearPerfil };
+  return { form: crearPerfil, sections: []};
 };
 
 export const initEditProfileForm: IFormGenerator<RoleProfileEditionModel> = () => {
@@ -38,22 +38,26 @@ export const initEditProfileForm: IFormGenerator<RoleProfileEditionModel> = () =
       label: 'Nombre',
       GetType: 'standar-input',
       rules: [validators.Required],
+      section: 'default'
     },
     code: {
       label: 'Código',
       GetType: 'standar-input',
+      section: 'default'
     },
     status: {
       label: 'Estado',
       GetType: 'select',
       options: getSelectList(Status),
       rules: [validators.Required],
+      section: 'default'
     },
     description: {
       label: 'Descripción',
       GetType: 'text-area',
       rules: [validators.Required],
+      section: 'default'
     },
   };
-  return { form: crearPerfil };
+  return { form: crearPerfil, sections: []};
 };

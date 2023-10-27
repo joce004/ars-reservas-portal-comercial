@@ -93,7 +93,7 @@ const setForm = (selectedForm: number) => {
   );
   form.value.formSchema = {
     form: Object.assign({}, clientForm.form, formCreated?.schema),
-    sections: [...clientForm.sections, ...formCreated.sections]
+    sections: [...clientForm.sections, ...formCreated.sections],
   };
   form.value.files = formCreated?.files ?? false;
 };
@@ -108,14 +108,13 @@ const alert = (title: string, message: string) => {
 const fetchServiceRequestType = async () => {
   loader.showLoader('Cargando...');
   const serviceRequestResult =
-    await ResolveRequestOperation<ServiceRequestTypeModelPaged>(
-      () =>
+    await ResolveRequestOperation<ServiceRequestTypeModelPaged>({
+      request: () =>
         $serviceRequestTypeApi.apiServiceRequestTypesGet({
           businessId: userInfo.value?.businesses?.[0]?.id,
           visibility: 'ServiceRequestForm',
         }),
-      'No se pudo obtener el listado de servicios.'
-    );
+    });
   if (serviceRequestResult.IsSuccessful()) {
     servicios.value = mapSelectList(
       serviceRequestResult.Payload?.items ?? [],
@@ -125,7 +124,7 @@ const fetchServiceRequestType = async () => {
   } else {
     alert(
       'Solicitudes de Servicio',
-      `Error: ${serviceRequestResult.Errors[0] ?? serviceRequestResult.Message}`
+      'Error: No se pudo obtener el listado de servicios.'
     );
   }
   loader.hideLoader();
@@ -193,25 +192,19 @@ const submit = async () => {
 
     loader.showLoader('Guardando...');
     const serviceRequestResult =
-      await ResolveRequestOperation<ServiceRequestModel>(
-        () =>
+      await ResolveRequestOperation<ServiceRequestModel>({
+        request: () =>
           $serviceRequestApi.apiServiceRequestsPost({
             serviceRequestCreationModel: data,
           }),
-        'No se pudo crear solicitud.'
-      );
+      });
     loader.hideLoader();
 
     if (serviceRequestResult?.IsSuccessful()) {
       resetForm();
       router.push({ name: siteMap.solicitudesServicios.name });
     } else {
-      alert(
-        'Solicitudes de Servicio',
-        `Error: ${
-          serviceRequestResult.Errors[0] ?? serviceRequestResult.Message
-        }`
-      );
+      alert('Solicitudes de Servicio', 'Error: No se pudo crear solicitud.');
     }
   }
 };

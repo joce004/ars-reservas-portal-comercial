@@ -20,7 +20,6 @@ export const maxAge = (val: string | number | undefined) => {
 
 
     if(maxAge){
-      console.log(age);
       return (age < maxAge ) || `La edad del beneficiario no puede ser mayor a ${maxAge}`;
     }
     return true

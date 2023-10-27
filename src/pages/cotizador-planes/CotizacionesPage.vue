@@ -67,8 +67,8 @@ const fetchServiceRequests = async (params?: {
   query?: Record<string, string>;
 }) => {
   const serviceRequestResult =
-    await ResolveRequestOperation<ServiceRequestModelPaged>(
-      () =>
+    await ResolveRequestOperation<ServiceRequestModelPaged>({
+      request: () =>
         $serviceRequestApi.apiServiceRequestsGet({
           page: params?.page ?? 1,
           visibility: 'PlanQuoterForm',
@@ -85,8 +85,7 @@ const fetchServiceRequests = async (params?: {
             'businessOwner.responsibleUser',
           ],
         }),
-      'No se pudo obtener el listado de coti.'
-    );
+    });
 
   if (serviceRequestResult.IsSuccessful()) {
     data.value = serviceRequestResult.Payload?.items ?? [];
@@ -95,7 +94,7 @@ const fetchServiceRequests = async (params?: {
   } else {
     alert(
       'Solicitudes de Servicio',
-      `Error: ${serviceRequestResult.Errors[0] ?? serviceRequestResult.Message}`
+      'Error: No se pudo obtener el listado de cotización.'
     );
   }
 };
@@ -112,20 +111,20 @@ const fetchServiceRequestByQuery = async (params?: {
 const deleteServiceRequest = async (id: number) => {
   loader.showLoader('Eliminando...');
 
-  const serviceRequestResult = await ResolveRequestOperation<void>(
-      () =>
-        $serviceRequestApi.apiServiceRequestsIdDelete({
-          id: id,
-        }),
-      'No se pudo eliminar la Cotización.'
-    );;
+  const serviceRequestResult = await ResolveRequestOperation<void>({
+    request: () =>
+      $serviceRequestApi.apiServiceRequestsIdDelete({
+        id: id,
+      }),
+
+  });
 
   if (serviceRequestResult?.IsSuccessful()) {
     await fetchServiceRequests();
   } else {
     alert(
       'Solicitudes de Servicio',
-      `Error: ${serviceRequestResult.Errors[0] ?? serviceRequestResult.Message}`
+      'Error: No se pudo eliminar la Cotización.'
     );
   }
 

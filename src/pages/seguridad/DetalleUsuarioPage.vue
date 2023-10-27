@@ -7,7 +7,12 @@ import {
   BusinessUserModel,
   RoleProfileModel,
   UserModel,
+  ErrorResponse,
+  UserEditionModel,
+  UserChangePasswordModel,
+  BusinessUserModelPaged,
 } from 'src/api';
+import { $businessUserApi, $roleProfileApi, $userApi } from 'src/boot/api';
 import NavigationBtnComponent from 'src/components/ui/buttom/NavigationBtnComponent.vue';
 import DialogFormComponent from 'src/components/ui/containers/DialogFormComponent.vue';
 import ItemResume from 'src/components/ui/containers/ItemResume.vue';
@@ -23,25 +28,18 @@ import {
   initEditUserModel,
   initEditUserPass,
   initEditUserPassForm,
+  updateBusinessUserModel,
 } from 'src/models/forms/seguridad/model.seguridad.usuarios';
 import { IColumn } from 'src/models/schemas/IColumn';
-import { IFieldSpecification } from 'src/models/schemas/IFormSpecification';
-import {
-  DeleteProfilesUser,
-  FetchBusinessesUsers,
-  GetBusinessUser,
-  GetUser,
-  PostProfilesUser,
-  PutBusinessUser,
-  PutUser,
-  PutUserChangePassword,
-} from 'src/repository/seguridad.usuarios.repository.js';
+import { IFormSpecification } from 'src/models/schemas/IFormSpecification';
+import {} from 'src/repository/seguridad.usuarios.repository.js';
 import { siteMap } from 'src/router/siteMap';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useCatalogStore } from 'src/stores/catalog.store';
 import { Loader } from 'src/utils/loading';
 import { IOperationResult } from 'src/utils/operation-result';
-import { onMounted, ref } from 'vue';
+import { ResolveRequestOperation } from 'src/utils/request';
+import { onMounted, ref, toRaw } from 'vue';
 
 const props = defineProps<{
   id: string;
@@ -53,18 +51,34 @@ const columns = ref<IColumn<BusinessUserModel>[]>();
 const pages = ref<{ curent: number; total: number }>({ curent: 0, total: 0 });
 
 const { cloned: dialogHandler, sync: resetDialogData } = useCloned<
-  Nullable<{
-    show: boolean;
-    model: object;
-    schema: Record<string, IFieldSpecification>;
-    action: 'UP' | 'UB' | 'U';
-    formTitle: string;
-  }>
+  Nullable<
+    | {
+        action: 'update-user';
+        show: boolean;
+        model: UserEditionModel;
+        schema: IFormSpecification<UserEditionModel>;
+        formTitle: string;
+      }
+    | {
+        action: 'update-password';
+        show: boolean;
+        model: UserChangePasswordModel;
+        schema: IFormSpecification<UserChangePasswordModel>;
+        formTitle: string;
+      }
+    | {
+        action: 'update-access';
+        show: boolean;
+        model: updateBusinessUserModel;
+        schema: IFormSpecification<updateBusinessUserModel>;
+        formTitle: string;
+      }
+  >
 >({
+  action: null,
   show: false,
   model: null,
   schema: null,
-  action: null,
   formTitle: null,
 });
 
@@ -74,13 +88,16 @@ const { cloned: profilesSeter, sync: resetProfileSeter } = useCloned<
 
 // STORES
 const store = useCatalogStore();
-const { fetchOfficersList, fetchProfilesList } = store;
-const { officers: officerList, profiles: profileList } = storeToRefs(store);
+const {
+  users: userList,
+  officers: officerList,
+  profiles: profileList,
+} = storeToRefs(store);
+const { fetchUsersList, fetchOfficersList, fetchProfilesList } = store;
 
+const usersList = fetchUsersList();
 const profilesList = fetchProfilesList();
-
 const officersList = fetchOfficersList();
-officersList.fetchOfficersExec();
 
 const authStore = useAuthStore();
 const { profile: userInfo } = storeToRefs(authStore);
@@ -115,7 +132,7 @@ const edit = () => {
       show: true,
       model: initEditUserModel(model.value),
       schema: initEditUserForm(),
-      action: 'U',
+      action: 'update-user',
       formTitle: 'Editar Datos del Usuario',
     };
   }
@@ -126,14 +143,19 @@ const editPassword = () => {
     show: true,
     model: initEditUserPass(props.id),
     schema: initEditUserPassForm(),
-    action: 'UP',
+    action: 'update-password',
     formTitle: 'Actulizar Contraseña',
   };
 };
 
 const editBusinessUser = async (id: number) => {
   loader.showLoader('Guardando...');
-  const businessResult = await GetBusinessUser(id);
+  const businessResult = await ResolveRequestOperation<BusinessUserModel>({
+    request: () =>
+      $businessUserApi.apiBusinessesUsersIdGet({
+        id: id,
+      }),
+  });
   loader.hideLoader();
   if (businessResult.IsSuccessful() && businessResult.Payload) {
     const officers = officerList.value?.filter(
@@ -145,64 +167,109 @@ const editBusinessUser = async (id: number) => {
       model: initEditAcess(businessResult.Payload),
       schema: initEditAcessForm(officers ?? []),
       formTitle: 'Editar Acceso',
-      action: 'UB',
+      action: 'update-access',
     };
+  } else {
+    alert(
+      'Usuario',
+      'Error: No se pudo obtener los datos para la gestión de los accesos.'
+    );
   }
 };
 
 const submit = async () => {
   loader.showLoader('Guardando...');
   if (dialogHandler.value.model) {
-    let userResult:
-      | IOperationResult<null>
+    let result:
+      | IOperationResult<void>
       | IOperationResult<UserModel>
       | IOperationResult<BusinessUserModel>
       | null = null;
     switch (dialogHandler.value.action) {
-      case 'UP':
-        userResult = await PutUserChangePassword(dialogHandler.value.model);
+      case 'update-password':
+        let updatePasswordModel = toRaw(dialogHandler.value.model);
+        result = await ResolveRequestOperation<void>({
+          request: () =>
+            $userApi.apiUsersChangePasswordPut({
+              userChangePasswordModel: updatePasswordModel,
+            }),
+          messageError: 'No se pudo actualizar la contraseña.',
+        });
+
         break;
-      case 'U':
-        userResult = await PutUser(dialogHandler.value.model);
+      case 'update-user':
+        const updateUserModel = toRaw(dialogHandler.value.model);
+        result = await ResolveRequestOperation<UserModel>({
+          request: () =>
+            $userApi.apiUsersPut({
+              userEditionModel: updateUserModel,
+            }),
+          messageError: 'No se pudo modificar el usuario.',
+        });
+
         break;
-      case 'UB':
-        userResult = await PutBusinessUser(dialogHandler.value.model);
+      case 'update-access':
+        const updateBusinessUserModel = toRaw(dialogHandler.value.model);
+        result = await ResolveRequestOperation<BusinessUserModel>({
+          request: () =>
+            $businessUserApi.apiBusinessesUsersPut({
+              businessUserEditionModel: {
+                id: updateBusinessUserModel.id,
+                responsibleBusinessUserId:
+                  updateBusinessUserModel.responsibleBusinessUserId,
+                status: updateBusinessUserModel.status,
+                type: { type: updateBusinessUserModel.type },
+              },
+            }),
+          messageError: 'No se pudo modificar el acceso.',
+        });
         break;
     }
     loader.hideLoader();
 
-    if (userResult?.IsSuccessful()) {
+    if (result?.IsSuccessful()) {
       fechUser(props.id);
       fechBusinessUser();
       resetDialogData();
     } else {
-      alert(
-        'Usuario',
-        `Error: ${userResult?.Errors[0] ?? userResult?.Message}`
-      );
+      alert('Usuario', `Error: ${result?.Errors[0] ?? result?.Message}`);
     }
   }
 };
 
 const fechUser = async (id: string) => {
-  const userResult = await GetUser(id);
+  const userResult = await ResolveRequestOperation<UserModel>({
+    request: () =>
+      $userApi.apiUsersIdGet({
+        id: id,
+        rawIncludes: ['Profiles', 'briefBusinessUsers'],
+      }),
+  });
+
   if (userResult.IsSuccessful() && userResult.Payload) {
     model.value = userResult.Payload;
     roleControlInitializer(userResult.Payload.profiles ?? []);
   } else {
-    alert('Usuario', `Error: ${userResult.Errors[0] ?? userResult.Message}`);
+    alert('Usuario', 'No se pudo obtener los datos del usuario.');
   }
 };
 
 const fechBusinessUser = async () => {
-  const businessUserResult = await FetchBusinessesUsers({ userId: props.id });
+  const businessUserResult =
+    await ResolveRequestOperation<BusinessUserModelPaged>({
+      request: () =>
+        $businessUserApi.apiBusinessesUsersGet({
+          userId: props.id,
+          rawIncludes: ['business', 'responsibleBusinessUser.User'],
+        }),
+    });
 
   if (businessUserResult.IsSuccessful() && businessUserResult.Payload) {
     data.value = businessUserResult.Payload.items ?? [];
   } else {
     alert(
       'Usuario',
-      `Error: ${businessUserResult.Errors[0] ?? businessUserResult.Message}`
+      'Error: No se pudo obtener el listado de intermediarios para el manejo de los accesos.'
     );
   }
 };
@@ -212,41 +279,45 @@ const updateUserProfile = async (
   profileId: number,
   val: boolean
 ) => {
-  if (index && profileId) {
+  if (typeof index === 'number' && profileId) {
     if (val) {
       loader.showLoader('Agregando...');
 
-      const roleProfileResult = await PostProfilesUser({
-        profileId: profileId,
-        userId: model.value?.id,
+      const roleProfileResult = await ResolveRequestOperation<ErrorResponse>({
+        request: () =>
+          $roleProfileApi.apiProfilesUserPost({
+            addOrDeleteUserToProfileModel: {
+              profileId: profileId,
+              userId: model.value?.id,
+            },
+          }),
       });
 
       if (roleProfileResult?.IsSuccessful()) {
         await fechUser(props.id);
       } else {
         profilesSeter.value[index].val = !profilesSeter.value[index].val;
-        alert(
-          'Usuario',
-          `Error: ${roleProfileResult.Errors[0] ?? roleProfileResult.Message}`
-        );
+        alert('Usuario', 'Error: No se pudo añadir el perfil al usuario.');
       }
       loader.hideLoader();
     }
     if (!val) {
       loader.showLoader('Eliminando...');
-      const roleProfileResult = await DeleteProfilesUser({
-        profileId: profileId,
-        userId: model.value?.id,
+      const roleProfileResult = await ResolveRequestOperation<ErrorResponse>({
+        request: () =>
+          $roleProfileApi.apiProfilesUserDelete({
+            addOrDeleteUserToProfileModel: {
+              profileId: profileId,
+              userId: model.value?.id,
+            },
+          }),
       });
 
       if (roleProfileResult?.IsSuccessful()) {
         await fechUser(props.id);
       } else {
         profilesSeter.value[index].val = !profilesSeter.value[index].val;
-        alert(
-          'Usuario',
-          `Error: ${roleProfileResult.Errors[0] ?? roleProfileResult.Message}`
-        );
+        alert('Usuario', 'Error: No se pudo remover el perfil al usuario.');
       }
       loader.hideLoader();
     }
@@ -257,15 +328,14 @@ const updateUserProfile = async (
 
 onMounted(async () => {
   loader.showLoader('Cargando...');
-
-  await until(officersList.fetchOfficerIsReady).toBe(true);
-
+  usersList.fetchUsersExec();
   if (
     userInfo.value?.roles?.includes('RoleProfiles.Read') &&
     userInfo?.value.roles?.includes('Users.Edit')
   ) {
     profilesList.fetchProfilesExec();
     await until(profilesList.fetchProfilesIsReady).toBe(true);
+    await until(usersList.fetchUserIsReady).toBe(true);
   }
 
   await fechUser(props.id);
@@ -383,9 +453,14 @@ onMounted(async () => {
             type="v"
             class="col-xs-12 col-sm-6 col-md-3 col-lg-2"
           />
+
           <ItemResume
             title="Creado por"
-            :value="model.createdBy?.toLocaleUpperCase()"
+            :value="
+              userList
+                ?.find((user) => user.userName == model?.createdBy)
+                ?.fullName?.toUpperCase()
+            "
             html-class="text-subtitle1"
             type="v"
             class="col-xs-12 col-sm-6 col-md-3 col-lg-2"

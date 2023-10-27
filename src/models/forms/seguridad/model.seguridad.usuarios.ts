@@ -1,27 +1,68 @@
-import { BusinessUserEditionModel, BusinessUserModel, UserCreationModel, UserEditionModel, UserModel } from 'src/api';
+import { BusinessUserEditionModel, BusinessUserModel, BusinessUserType, Status, UserCreationModel, UserEditionModel, UserModel } from 'src/api';
 import { IFormGenerator, IFieldSpecification, IFormSpecification } from 'src/models/schemas/IFormSpecification';
 import { TipoUsuarioEmpresa, Estados } from 'src/enums/Dictionary.enum';
 import { getSelectList, mapSelectList } from 'src/utils/array';
 import { validators } from 'src/utils/validations';
 
+
+export type customUserCreationModel = {
+  firstName?: string,
+  secondName?: string,
+  firstLastName?: string,
+  secondLastName?: string,
+  phoneNumber?: string,
+  userName?: string,
+  password?: string,
+  email?: string,
+  businessId?: string | null,
+  businessType?: BusinessUserType | null,
+}
+
+export type updateBusinessUserModel = Partial<{
+  id: number,
+  type: BusinessUserType,
+  responsibleBusinessUserId: number | null,
+  status: Status,
+}>
+
+
+export const mapUserCreationModel = (data: customUserCreationModel) => {
+  const model: UserCreationModel = {
+    firstName: data.firstName,
+    secondName: data.secondName,
+    firstLastName: data.firstLastName,
+    secondLastName: data.secondLastName,
+    phoneNumber: data.phoneNumber,
+    userName: data.userName,
+    password: data.password,
+    email: data.email,
+    businessId: +`${data.businessId}`,
+    businessType: {
+      type: data.businessType as BusinessUserType
+    }
+
+  }
+  return model
+}
+
 export const initCreateUserModel = () => {
-  const actualizacionDatosContratante: Nullable<UserCreationModel> = {
-    firstName: null,
-    secondName: null,
-    firstLastName: null,
-    secondLastName: null,
-    userName: null,
-    password: null,
-    phoneNumber: null,
-    email: null,
+  const model: customUserCreationModel = {
+    firstName: '',
+    secondName: '',
+    firstLastName: '',
+    secondLastName: '',
+    userName: '',
+    password: '',
+    phoneNumber: '',
+    email: '',
     businessId: null,
     businessType: null,
   };
-  return actualizacionDatosContratante;
+  return model;
 };
 
 export const initEditUserModel = (user: UserModel) => {
-  const actualizacionDatosContratante: UserEditionModel = {
+  const model: UserEditionModel = {
     firstName: user.firstName,
     secondName: user.secondName,
     firstLastName: user.firstLastName,
@@ -30,30 +71,28 @@ export const initEditUserModel = (user: UserModel) => {
     status: user.status,
     id: user.id,
   };
-  return actualizacionDatosContratante;
+  return model;
 };
+
 
 export const initEditAcess = (businessUser: BusinessUserModel) => {
-  const actualizacionDatosContratante: Partial<
-    Nullable<{
-      [Key in keyof BusinessUserEditionModel]: string | number;
-    }>
-  > = {
+  const model: updateBusinessUserModel = {
     id: businessUser.id,
-    type: businessUser.type?.type ?? null,
-    responsibleBusinessUserId: businessUser.responsibleBusinessUserId ?? null,
+    type: businessUser.type?.type,
+    responsibleBusinessUserId: businessUser.responsibleBusinessUserId,
     status: businessUser.status,
   };
-  return actualizacionDatosContratante;
+  return model;
 };
 
+
 export const initEditUserPass = (id: string) => {
-  const actualizacionDatosContratante = {
+  const model = {
     userId: id,
     newPassword: null,
     confirmPassword: null,
   };
-  return actualizacionDatosContratante;
+  return model;
 };
 
 export const initCreateUserForm: IFormGenerator<UserCreationModel> = (listBussiness: object[]) => {

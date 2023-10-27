@@ -3,11 +3,10 @@ import { Errors } from 'src/enums/error-list-enum';
 import { initOperationResult } from './operation-result';
 
 export const ResolveRequestOperation = async <TModel>(
-  request: () => Promise<AxiosResponse<TModel>>,
-  messageError?: string) => {
+  { request, messageError, payloadMutationFunc }: { request: () => Promise<AxiosResponse<TModel>>; messageError?: string; payloadMutationFunc?: (data: TModel) => TModel; }) => {
   const OperationResult = initOperationResult<TModel>();
   try {
-    await request().then((response) => OperationResult.OperationSuccess(response.data));
+    await request().then((response) => OperationResult.OperationSuccess(payloadMutationFunc ? payloadMutationFunc(response.data) : response.data));
     return OperationResult;
   } catch (err) {
     if (err) {

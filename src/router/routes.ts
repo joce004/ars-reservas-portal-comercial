@@ -146,26 +146,6 @@ export const routes: RouteRecordRaw[] = [
           navItem: true,
         },
       },
-      //{
-      //  path: siteMap.clientes.path,
-      //  name: siteMap.clientes.name,
-      //  component: () => import('src/pages/clientes/ClientesPage.vue'),
-      //},
-      //{
-      //  path: siteMap.polizas.path,
-      //  name: siteMap.polizas.name,
-      //  component: () => import('src/pages/polizas/PolizasPage.vue'),
-      //},
-      //{
-      //  path: siteMap.cobros.path,
-      //  name: siteMap.cobros.name,
-      //  component: () => import('src/pages/cobros/CobrosPage.vue'),
-      //},
-      //{
-      //  path: siteMap.comisiones.path,
-      //  name: siteMap.comisiones.name,
-      //  component: () => import('src/pages/comisiones/ComisionesPage.vue'),
-      //},
       {
         path: siteMap.biblioteca.path,
         name: siteMap.biblioteca.name,
